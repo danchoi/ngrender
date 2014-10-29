@@ -37,7 +37,7 @@ renderContext context = processTopDown (
 -}
 
 interpolate context = processTopDown (
-    (constA context >>> xread)
+    (constA context >>> mkText)
     `when`
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
