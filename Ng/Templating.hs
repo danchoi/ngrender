@@ -4,7 +4,7 @@ import Text.XML.HXT.Core
 import Control.Arrow.ArrowList
 import Text.XML.HXT.Arrow.XmlArrow
 import Text.XML.HXT.DOM.TypeDefs
-
+import Data.List
 
 
 xs = ["one", "two", "three"]
@@ -39,7 +39,7 @@ renderContext context = processTopDown (
 interpolate context = processTopDown (
     (constA context >>> xread)
     `when`
-    (isElem >>> hasName "input")
+    (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
 
 
