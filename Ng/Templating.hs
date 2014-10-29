@@ -36,6 +36,7 @@ renderContext context = processTopDown (
   )
 -}
 
+interpolate :: ArrowXml a => String -> a XmlTree XmlTree
 interpolate context = processTopDown (
     (constA context >>> mkText)
     `when`
