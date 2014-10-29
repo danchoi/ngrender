@@ -13,7 +13,8 @@ processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        (repeatFragment >>> renderContext "test")
+        -- (repeatFragment >>> renderContext "test")
+        (repeatFragment >>> (interpolate "test"))
         `when`
         (isElem >>> hasAttr "ng-repeat")
       )
@@ -26,12 +27,23 @@ repeatFragment = arrL (take 2 . repeat)
 
 
 -- renderContext :: ArrowXml a => String -> a b c
+
+{-
 renderContext context = processTopDown (
     replaceChildren (imgElement)
     `when`
     (isElem >>> hasName "input")
   )
+-}
 
+interpolate context = processTopDown (
+    replaceChildren (constA context >>> xread)
+    `when`
+    (isElem >>> hasName "input")
+  )
+
+
+imgElement :: ArrowXml a => a b XmlTree
 imgElement = mkelem "img"                     
 	  [ sattr "src" "/icons/ref.png"  
 	  , sattr "alt" "external ref"
