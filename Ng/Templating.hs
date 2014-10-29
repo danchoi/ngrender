@@ -37,7 +37,7 @@ renderContext context = processTopDown (
 -}
 
 interpolate context = processTopDown (
-    replaceChildren (constA context >>> xread)
+    (constA context >>> xread)
     `when`
     (isElem >>> hasName "input")
   )
