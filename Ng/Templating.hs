@@ -1,13 +1,21 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, QuasiQuotes, OverloadedStrings #-}
 module Ng.Templating where
 import Text.XML.HXT.Core
 import Control.Arrow.ArrowList
 import Text.XML.HXT.Arrow.XmlArrow
 import Text.XML.HXT.DOM.TypeDefs
 import Data.List
+import Data.Aeson
+import Data.Aeson.Types
+import Data.String.QQ 
+import qualified Data.ByteString.Lazy.Char8 as B
 
 
 xs = ["one", "two", "three"]
+
+items :: Maybe Value
+items = decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
+
 
 processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
