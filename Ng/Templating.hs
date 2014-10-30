@@ -1,5 +1,6 @@
 {-# LANGUAGE Arrows, QuasiQuotes, OverloadedStrings #-}
 module Ng.Templating where
+import Data.Maybe (fromJust)
 import Text.XML.HXT.Core
 import Control.Arrow.ArrowList
 import Text.XML.HXT.Arrow.XmlArrow
@@ -13,9 +14,10 @@ import qualified Data.ByteString.Lazy.Char8 as B
 
 xs = ["one", "two", "three"]
 
-items :: Maybe Value
-items = decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
+items :: Value
+items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
 
+-- Array (fromList [Object (fromList [("name",String "one")]),Object (fromList [("name",String "two")]),Object (fromList [("name",String "three")])])
 
 processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
