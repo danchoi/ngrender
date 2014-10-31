@@ -45,6 +45,8 @@ ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
 ngIterate x@(Object _) = interpolate $ ngEval "name" x
 ngIterate _ = none
 
+-- CHANGE: replace strings
+
 interpolate :: ArrowXml a => String -> a XmlTree XmlTree
 interpolate context = processTopDown (
     (constA context >>> mkText)
