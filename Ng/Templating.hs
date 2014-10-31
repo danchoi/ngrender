@@ -37,7 +37,8 @@ processTemplate file = runX (
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
 
-ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
+ngRepeat :: ArrowXml a => (Value, Value)   -- ^ the global context JSON Value, the local loop JSON Value 
+         -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
     (ngIterate $< (constL $ map (Object . HM.singleton "item") . V.toList $ xs))
     >>> removeAttr "ng-repeat" 
