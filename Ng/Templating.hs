@@ -39,15 +39,15 @@ processTemplate file = runX (
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-    -- arrL (take (V.length xs) . repeat) >>> 
-    (this &&& (constL $ V.toList xs))
-    >>> arr2 ngIterate
-    -- >>> removeAttr "ng-repeat" 
+    (ngIterate $< (constL $ V.toList xs))
+    >>> removeAttr "ng-repeat" 
 
 ngRepeat _ = this
 
-ngIterate :: XmlTree -> Value -> XmlTree
-ngIterate x v = x
+ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
+ngIterate (Object v) = interpolate (HM.lookupDefault Null "name" v)
+ngIterate _ = none
+
 
 
 -- renderContext :: ArrowXml a => String -> a b c
@@ -60,9 +60,9 @@ renderContext context = processTopDown (
   )
 -}
 
-interpolate :: ArrowXml a => String -> a XmlTree XmlTree
+interpolate :: ArrowXml a => Value  -> a XmlTree XmlTree
 interpolate context = processTopDown (
-    (constA context >>> mkText)
+    (constA (show context) >>> mkText)
     `when`
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
