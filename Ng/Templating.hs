@@ -15,7 +15,7 @@ import Data.String.QQ
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
 import Text.Parsec
-import Control.Applicative ((<*), (*>), (<$>))
+import Control.Applicative ((<*), (*>), (<$>), (<*>))
 import Data.Monoid
 import Data.List.Split
 
@@ -40,20 +40,27 @@ processTemplate file = runX (
 ngRepeat :: ArrowXml a => (Value, Value)   -- ^ the global context JSON Value, the local loop JSON Value 
          -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-    (ngIterate $< (constL $ map (Object . HM.singleton "item") . V.toList $ xs))
+    -- todo get iteration key, loop array from ng-repeat expression
+    (ngIterate $<< (
+        (constL $ V.toList xs)
+        &&&
+        constA "hello"
+        )
+    )
     >>> removeAttr "ng-repeat" 
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a 
-          => Value        -- ^ The object exposed on this iteration; should be wrapped in an Object keyed by the iteration key, e.g. "item" in "item for items"
+          => Value -- ^ The object exposed on this iteration
+          -> String
           -> a XmlTree XmlTree
-ngIterate iterVar@(Object _) = 
+ngIterate iterVar@(Object _) (NgRepeat iterKey context) = 
         processTopDown (
-          (changeText (mconcat . map (evalText iterVar) . parseText))
+          (changeText (mconcat . map (evalText (Object $ HM.singleton "item" iterVar)) . parseText))
           `when`
           isText 
         )
-ngIterate _ = none
+ngIterate _ _ = none
 
 
 evalText :: Value -> TextChunk -> String
@@ -93,15 +100,29 @@ valToString x = show  x
 data TextChunk = PassThrough String | Interpolation String 
     deriving Show
 
-parseText :: String -> [TextChunk]
-parseText inp = 
-  case Text.Parsec.parse (many ngTextChunk) "" inp of
-    Left x -> error $ "parseText failed: " ++ show x
+runParse parser inp =
+  case Text.Parsec.parse parser "" inp of
+    Left x -> error $ "parser failed: " ++ show x
     Right xs -> xs
+
+parseText :: String -> [TextChunk]
+parseText = runParse (many ngTextChunk) 
+
     
 
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
 ngTextChunk =   
     (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
     <|> (PassThrough <$> (many1 (noneOf "{")))
+
+-- | repeats the iteration placeholder key and the key tot he global context object
+data NgRepeat = NgRepeat String String  deriving Show
+
+parseNgRepeatExpr :: String -> NgRepeat 
+parseNgRepeatExpr = runParse $ do
+        iter <- many1 alphaNum
+        spaces >> string "in" >> spaces
+        context <- many1 alphaNum
+        return $ NgRepeat iter context
+
 
