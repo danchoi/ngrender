@@ -21,7 +21,7 @@ import Data.Monoid
 import Data.List.Split
 
 items :: Value
-items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
+items = fromJust $ decode $ B.pack [s|[{"name":"one","votes":1}, {"name":"two","votes":2},{"name":"three","votes":3}]|]
 
 context :: Value
 context = Object (HM.singleton "items" items)
@@ -42,22 +42,24 @@ processTemplate file = runX (
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-    (ngIterate $< (constL $ V.toList xs))
+    (ngIterate $< (constL $ map (Object . HM.singleton "item") . V.toList $ xs))
     >>> removeAttr "ng-repeat" 
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
-ngIterate x@(Object _) = interpolate x $ ngEval "name" x
+ngIterate iterVar@(Object _) = 
+        processTopDown (
+          (changeText (mconcat . map (evalText iterVar) . parseText))
+          `when`
+          isText 
+        )
 ngIterate _ = none
 
--- CHANGE: replace strings
 
-interpolate :: ArrowXml a => Value -> String -> a XmlTree XmlTree
-interpolate context replace = processTopDown (
-    (changeText (mconcat . map (evalText context) . parseText))
-    `when`
-    (isText >>> hasText (isInfixOf "{{item.body}}"))
-  )
+evalText :: Value -> TextChunk -> String
+evalText v (PassThrough s) = s
+evalText v (Interpolation s) = ngEval s v
+
 
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. "item.name" -> (Object ...) -> "John"
@@ -90,10 +92,6 @@ valToString x = show  x
 
 data TextChunk = PassThrough String | Interpolation String 
     deriving Show
-
-evalText :: Value -> TextChunk -> String
-evalText v (PassThrough s) = s
-evalText v (Interpolation s) = ngEval s v
 
 parseText :: String -> [TextChunk]
 parseText inp = 
