@@ -44,7 +44,9 @@ ngRepeat (globalContext, loop@(Array xs)) =
     >>> removeAttr "ng-repeat" 
 ngRepeat _ = this
 
-ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
+ngIterate :: ArrowXml a 
+          => Value        -- ^ The object exposed on this iteration
+          -> a XmlTree XmlTree
 ngIterate iterVar@(Object _) = 
         processTopDown (
           (changeText (mconcat . map (evalText iterVar) . parseText))
