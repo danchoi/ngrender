@@ -5,7 +5,9 @@ import Text.XML.HXT.Core
 import Control.Arrow.ArrowList
 import Text.XML.HXT.Arrow.XmlArrow
 import Text.XML.HXT.DOM.TypeDefs
-import Data.List
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.List (isInfixOf)
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.HashMap.Lazy as HM
@@ -14,7 +16,6 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
 
 
-xs = ["one", "two", "three"]
 
 items :: Value
 items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
@@ -45,8 +46,30 @@ ngRepeat (globalContext, loop@(Array xs)) =
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
-ngIterate (Object v) = interpolate (HM.lookupDefault Null "name" v)
+ngIterate x@(Object _) = interpolate $ valueToText . ngEvaluate (toJSKey "name") $ x
 ngIterate _ = none
+
+data JSKey = ObjKey Text | ArrIdx Int 
+    deriving Show
+
+toJSKey :: Text -> [JSKey]
+toJSKey xs = map go . T.splitOn "." $ xs
+  where go x = ObjKey x
+        -- TODO translate [1] expression
+
+ngEvaluate :: [JSKey] -> Value -> Value
+ngEvaluate [] x@(String _) = x
+ngEvaluate [] x@Null = x
+ngEvaluate [] x@(Number _) = x
+ngEvaluate ((ObjKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
+ngEvaluate ((ArrIdx idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
+ngEvaluate _ _ = Null
+
+valueToText :: Value -> Text
+valueToText (String x) = x
+valueToText (Number x) = T.pack $ show x
+valueToText Null = ""
+valueToText x = T.pack . show $ x
 
 
 
@@ -60,7 +83,7 @@ renderContext context = processTopDown (
   )
 -}
 
-interpolate :: ArrowXml a => Value  -> a XmlTree XmlTree
+interpolate :: ArrowXml a => Text  -> a XmlTree XmlTree
 interpolate context = processTopDown (
     (constA (show context) >>> mkText)
     `when`
