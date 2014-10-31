@@ -25,7 +25,8 @@ executable ngrender
                        text, 
                        aeson,
                        string-qq,
-                       vector
+                       vector,
+                       unordered-containers
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

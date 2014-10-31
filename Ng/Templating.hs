@@ -8,6 +8,7 @@ import Text.XML.HXT.DOM.TypeDefs
 import Data.List
 import Data.Aeson
 import Data.Aeson.Types
+import qualified Data.HashMap.Lazy as HM
 import Data.String.QQ 
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
@@ -17,6 +18,9 @@ xs = ["one", "two", "three"]
 
 items :: Value
 items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
+
+context :: Value
+context = Object (HM.singleton "items" items)
 
 -- Array (fromList [Object (fromList [("name",String "one")]),Object (fromList [("name",String "two")]),Object (fromList [("name",String "three")])])
 
@@ -35,11 +39,16 @@ processTemplate file = runX (
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-      -- remove ng-repeat attribute
-      removeAttr "ng-repeat" >>>
-      -- repeat the node
-      arrL (take (V.length xs) . repeat)
+      arrL (
+              map (uncurry ngIterate) . zip (V.toList xs) . take (V.length xs) . repeat
+           ) >>>
+      removeAttr "ng-repeat" 
+
 ngRepeat _ = this
+
+ngIterate :: Value -> XmlTree -> XmlTree 
+ngIterate v node = node
+
 
 
 -- renderContext :: ArrowXml a => String -> a b c
