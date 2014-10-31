@@ -29,7 +29,7 @@ processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        ngRepeat (items, items) 
+        ngRepeat context
         `when`
         (isElem >>> hasAttr "ng-repeat")
       )
@@ -37,30 +37,43 @@ processTemplate file = runX (
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
 
-ngRepeat :: ArrowXml a => (Value, Value)   -- ^ the global context JSON Value, the local loop JSON Value 
+ngRepeat :: ArrowXml a 
+         => Value       -- ^ the global context JSON Value, the local loop JSON Value 
          -> a XmlTree XmlTree
-ngRepeat (globalContext, loop@(Array xs)) = 
-    -- todo get iteration key, loop array from ng-repeat expression
-    (ngIterate $<< (
-        (constL $ V.toList xs)
-        &&&
-        constA "hello"
-        )
-    )
+ngRepeat context = 
+    (ngIterate context $< ngRepeatKeys)
     >>> removeAttr "ng-repeat" 
-ngRepeat _ = this
+
+
+ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeat
+ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
 
 ngIterate :: ArrowXml a 
-          => Value -- ^ The object exposed on this iteration
-          -> String
+          => Value      -- ^ context
+          -> NgRepeat   -- ^ contains data to repeat
           -> a XmlTree XmlTree
-ngIterate iterVar@(Object _) (NgRepeat iterKey context) = 
-        processTopDown (
-          (changeText (mconcat . map (evalText (Object $ HM.singleton "item" iterVar)) . parseText))
-          `when`
-          isText 
-        )
+ngIterate (Object context) (NgRepeat iterKey contextKey) = 
+    go iterKey $< (constL $ getList (T.pack contextKey) context)
+  where getList :: Text -> HM.HashMap Text Value -> [Value]
+        getList k v = 
+            case HM.lookup k v of
+              Just (Array xs) -> V.toList xs
+              _ -> []
+        go iterKey iterVar = 
+          processTopDown (
+            (changeText (
+                mconcat . 
+                map (evalText (wrapObjInKey (T.pack iterKey) iterVar)) . 
+                parseText
+              )
+            )
+            `when`
+            isText 
+          )
 ngIterate _ _ = none
+
+wrapObjInKey :: Text -> Value -> Value
+wrapObjInKey k v = Object $ HM.singleton k v
 
 
 evalText :: Value -> TextChunk -> String
