@@ -45,7 +45,7 @@ ngRepeat (globalContext, loop@(Array xs)) =
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a 
-          => Value        -- ^ The object exposed on this iteration
+          => Value        -- ^ The object exposed on this iteration; should be wrapped in an Object keyed by the iteration key, e.g. "item" in "item for items"
           -> a XmlTree XmlTree
 ngIterate iterVar@(Object _) = 
         processTopDown (
