@@ -39,7 +39,6 @@ ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
     (ngIterate $< (constL $ V.toList xs))
     >>> removeAttr "ng-repeat" 
-
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
@@ -82,20 +81,3 @@ valueToText (Number x) = show x
 valueToText Null = ""
 valueToText x = show  x
 
-
-imgElement :: ArrowXml a => a b XmlTree
-imgElement = mkelem "img"                     
-	  [ sattr "src" "/icons/ref.png"  
-	  , sattr "alt" "external ref"
-	  ] [] 
-  
-
-    {-
-    processAttrl (
-      changeAttrValue (const "TSET")
-      `when`
-      hasName "ng-repeat"
-    )
-    https://hackage.haskell.org/package/hxt-9.3.1.7
-
-    -}
