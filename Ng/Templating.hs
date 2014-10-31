@@ -14,6 +14,7 @@ import qualified Data.HashMap.Lazy as HM
 import Data.String.QQ 
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
+import Text.Regex
 
 items :: Value
 items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
@@ -49,7 +50,7 @@ ngIterate _ = none
 
 interpolate :: ArrowXml a => String -> a XmlTree XmlTree
 interpolate context = processTopDown (
-    (constA context >>> mkText)
+    (changeText (gsub "{{item.body}}" context))
     `when`
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
@@ -83,3 +84,16 @@ valueToText (Number x) = show x
 valueToText Null = ""
 valueToText x = show  x
 
+
+
+
+
+-- | Behaves like Ruby gsub implementation
+-- source: https://coderwall.com/p/l1hoeq
+
+gsub :: String -> String -> String -> String
+gsub regex replace str =
+  case matchRegexAll (mkRegex regex) str of
+    Nothing -> str
+    Just (before, matched, after, _) ->
+      before ++ replace ++ (gsub regex after replace)

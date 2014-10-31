@@ -26,7 +26,8 @@ executable ngrender
                        aeson,
                        string-qq,
                        vector,
-                       unordered-containers
+                       unordered-containers,
+                       regex-compat
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
