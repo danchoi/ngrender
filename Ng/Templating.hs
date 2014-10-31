@@ -49,8 +49,8 @@ ngIterate _ = none
 -- CHANGE: replace strings
 
 interpolate :: ArrowXml a => String -> a XmlTree XmlTree
-interpolate context = processTopDown (
-    (changeText (gsub "{{item.body}}" context))
+interpolate replace = processTopDown (
+    (changeText (gsub "{{item.body}}" replace))
     `when`
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
@@ -77,7 +77,6 @@ toJSKey xs = map go . T.splitOn "." $ xs
   where go x = ObjectKey x
         -- TODO translate [1] expression
 
-
 valueToText :: Value -> String
 valueToText (String x) = T.unpack x
 valueToText (Number x) = show x
@@ -86,14 +85,12 @@ valueToText x = show  x
 
 
 
-
-
 -- | Behaves like Ruby gsub implementation
--- source: https://coderwall.com/p/l1hoeq
+-- adapted from: https://coderwall.com/p/l1hoeq
 
 gsub :: String -> String -> String -> String
 gsub regex replace str =
   case matchRegexAll (mkRegex regex) str of
     Nothing -> str
     Just (before, matched, after, _) ->
-      before ++ replace ++ (gsub regex after replace)
+      before ++ replace ++ (gsub regex replace after)
