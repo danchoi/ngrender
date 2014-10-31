@@ -24,8 +24,7 @@ processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        -- (repeatFragment >>> renderContext "test")
-        (repeatFragment items >>> (interpolate "test"))
+        ngRepeat (items, items) 
         `when`
         (isElem >>> hasAttr "ng-repeat")
       )
@@ -34,9 +33,13 @@ processTemplate file = runX (
 
     )
 
-repeatFragment :: ArrowList a => Value -> a XmlTree XmlTree
-repeatFragment (Array xs) = arrL (take (V.length xs) . repeat)
-repeatFragment _ = this
+ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
+ngRepeat (globalContext, loop@(Array xs)) = 
+      -- remove ng-repeat attribute
+      removeAttr "ng-repeat" >>>
+      -- repeat the node
+      arrL (take (V.length xs) . repeat)
+ngRepeat _ = this
 
 
 -- renderContext :: ArrowXml a => String -> a b c
