@@ -19,11 +19,7 @@ import Control.Applicative ((<*), (*>), (<$>), (<*>))
 import Data.Monoid
 import Data.List.Split
 
-items :: Value
-items = fromJust $ decode $ B.pack [s|[{"name":"one","votes":1}, {"name":"two","votes":2},{"name":"three","votes":3}]|]
 
-context :: Value
-context = Object (HM.singleton "items" items)
 
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
