@@ -39,16 +39,16 @@ processTemplate file = runX (
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-      arrL (
-              map (uncurry ngIterate) . zip (V.toList xs) . take (V.length xs) . repeat
-           ) >>>
-      removeAttr "ng-repeat" 
+    ((arrL (take (V.length xs) . repeat))
+    &&&
+    (constL $ V.toList xs))
+    >>> arr2 ngIterate
+    -- >>> removeAttr "ng-repeat" 
 
 ngRepeat _ = this
 
-ngIterate :: Value -> XmlTree -> XmlTree 
-ngIterate v node = node
-
+ngIterate :: XmlTree -> Value -> XmlTree
+ngIterate x v = x
 
 
 -- renderContext :: ArrowXml a => String -> a b c
