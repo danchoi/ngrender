@@ -27,7 +27,6 @@ executable ngrender
                        string-qq,
                        vector,
                        unordered-containers,
-                       regex-compat,
                        parsec,
                        split
 

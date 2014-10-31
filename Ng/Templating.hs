@@ -14,7 +14,6 @@ import qualified Data.HashMap.Lazy as HM
 import Data.String.QQ 
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
-import Text.Regex
 import Text.Parsec
 import Control.Applicative ((<*), (*>), (<$>))
 import Data.Monoid
@@ -25,8 +24,6 @@ items = fromJust $ decode $ B.pack [s|[{"name":"one","votes":1}, {"name":"two","
 
 context :: Value
 context = Object (HM.singleton "items" items)
-
--- Array (fromList [Object (fromList [("name",String "one")]),Object (fromList [("name",String "two")]),Object (fromList [("name",String "three")])])
 
 processTemplate file = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
@@ -105,12 +102,3 @@ ngTextChunk =
     (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
     <|> (PassThrough <$> (many1 (noneOf "{")))
 
--- | Behaves like Ruby gsub implementation
--- adapted from: https://coderwall.com/p/l1hoeq
-
-gsub :: String -> String -> String -> String
-gsub regex replace str =
-  case matchRegexAll (mkRegex regex) str of
-    Nothing -> str
-    Just (before, matched, after, _) ->
-      before ++ replace ++ (gsub regex replace after)
