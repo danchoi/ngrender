@@ -25,11 +25,11 @@ items = fromJust $ decode $ B.pack [s|[{"name":"one","votes":1}, {"name":"two","
 context :: Value
 context = Object (HM.singleton "items" items)
 
-processTemplate file = runX (
+processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        ngRepeat context
+        ngRepeat json
         `when`
         (isElem >>> hasAttr "ng-repeat")
       )

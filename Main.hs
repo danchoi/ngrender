@@ -1,8 +1,15 @@
 module Main where
 import Ng.Templating
 import System.Environment
+import qualified Data.ByteString.Lazy.Char8 as B
+import Data.Aeson
+import Data.Maybe
 
 main = do
     [file] <- getArgs
-    processTemplate file
+    raw <- B.getContents
+    let json = (decode raw :: Maybe Value)
+    case json of 
+      (Just json') -> processTemplate file json'
+      _ -> error $ "error parsing json: " ++ B.unpack raw
      
