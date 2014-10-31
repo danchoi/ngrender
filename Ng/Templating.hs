@@ -15,8 +15,6 @@ import Data.String.QQ
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
 
-
-
 items :: Value
 items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
 
@@ -35,7 +33,6 @@ processTemplate file = runX (
       )
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
-
     )
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
@@ -46,16 +43,24 @@ ngRepeat (globalContext, loop@(Array xs)) =
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
-ngIterate x@(Object _) = interpolate $ valueToText . ngEvaluate (toJSKey "name") $ x
+ngIterate x@(Object _) = interpolate $ ngEval "name" x
 ngIterate _ = none
+
+interpolate :: ArrowXml a => String -> a XmlTree XmlTree
+interpolate context = processTopDown (
+    (constA context >>> mkText)
+    `when`
+    (isText >>> hasText (isInfixOf "{{item.body}}"))
+  )
+
+
+-- | function to evaluate an ng-expression and a object value context
+ngEval :: Text -> Value -> String
+ngEval keyExpr context = valueToText . ngEvaluate (toJSKey keyExpr) $ context
 
 data JSKey = ObjKey Text | ArrIdx Int 
     deriving Show
 
-toJSKey :: Text -> [JSKey]
-toJSKey xs = map go . T.splitOn "." $ xs
-  where go x = ObjKey x
-        -- TODO translate [1] expression
 
 ngEvaluate :: [JSKey] -> Value -> Value
 ngEvaluate [] x@(String _) = x
@@ -65,30 +70,17 @@ ngEvaluate ((ObjKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null k
 ngEvaluate ((ArrIdx idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
-valueToText :: Value -> Text
-valueToText (String x) = x
-valueToText (Number x) = T.pack $ show x
+toJSKey :: Text -> [JSKey]
+toJSKey xs = map go . T.splitOn "." $ xs
+  where go x = ObjKey x
+        -- TODO translate [1] expression
+
+
+valueToText :: Value -> String
+valueToText (String x) = T.unpack x
+valueToText (Number x) = show x
 valueToText Null = ""
-valueToText x = T.pack . show $ x
-
-
-
--- renderContext :: ArrowXml a => String -> a b c
-
-{-
-renderContext context = processTopDown (
-    replaceChildren (imgElement)
-    `when`
-    (isElem >>> hasName "input")
-  )
--}
-
-interpolate :: ArrowXml a => Text  -> a XmlTree XmlTree
-interpolate context = processTopDown (
-    (constA (show context) >>> mkText)
-    `when`
-    (isText >>> hasText (isInfixOf "{{item.body}}"))
-  )
+valueToText x = show  x
 
 
 imgElement :: ArrowXml a => a b XmlTree
