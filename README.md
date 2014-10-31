@@ -17,3 +17,11 @@ cabal install
 .cabal-sanbox/bin/ngrender items.html < items.json
 ```
 
+## Done
+
+* Basic rendering of {{expressions}} inside ng-repeat loop
+
+## TODO
+
+Lots
+
