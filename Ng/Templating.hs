@@ -39,9 +39,8 @@ processTemplate file = runX (
 
 ngRepeat :: ArrowXml a => (Value, Value) -> a XmlTree XmlTree
 ngRepeat (globalContext, loop@(Array xs)) = 
-    ((arrL (take (V.length xs) . repeat))
-    &&&
-    (constL $ V.toList xs))
+    -- arrL (take (V.length xs) . repeat) >>> 
+    (this &&& (constL $ V.toList xs))
     >>> arr2 ngIterate
     -- >>> removeAttr "ng-repeat" 
 
