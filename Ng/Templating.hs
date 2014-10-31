@@ -34,7 +34,7 @@ processTemplate file json = runX (
     )
 
 ngRepeat :: ArrowXml a 
-         => Value       -- ^ the global context JSON Value, the local loop JSON Value 
+         => Value       -- ^ the global context JSON Value
          -> a XmlTree XmlTree
 ngRepeat context = 
     (ngIterate context $< ngRepeatKeys)
