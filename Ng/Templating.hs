@@ -15,6 +15,10 @@ import Data.String.QQ
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Vector as V
 import Text.Regex
+import Text.Parsec
+import Control.Applicative ((<*), (*>), (<$>))
+import Data.Monoid
+import Data.List.Split
 
 items :: Value
 items = fromJust $ decode $ B.pack [s|[{"name":"one"}, {"name":"two"},{"name":"three"}]|]
@@ -43,47 +47,65 @@ ngRepeat (globalContext, loop@(Array xs)) =
 ngRepeat _ = this
 
 ngIterate :: ArrowXml a => Value -> a XmlTree XmlTree
-ngIterate x@(Object _) = interpolate $ ngEval "name" x
+ngIterate x@(Object _) = interpolate x $ ngEval "name" x
 ngIterate _ = none
 
 -- CHANGE: replace strings
 
-interpolate :: ArrowXml a => String -> a XmlTree XmlTree
-interpolate replace = processTopDown (
-    (changeText (gsub "{{item.body}}" replace))
+interpolate :: ArrowXml a => Value -> String -> a XmlTree XmlTree
+interpolate context replace = processTopDown (
+    (changeText (mconcat . map (evalText context) . parseText))
     `when`
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
 
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. "item.name" -> (Object ...) -> "John"
-ngEval :: Text -> Value -> String
-ngEval keyExpr context = valueToText . ngEvaluate (toJSKey keyExpr) $ context
+ngEval :: String -> Value -> String
+ngEval keyExpr context = valToString . ngEvaluate (toJSKey keyExpr) $ context
 
-data JSKey = ObjectKey Text | ArrayIndex Int 
+data JSKey = ObjectKey String | ArrayIndex Int 
     deriving Show
-
 
 ngEvaluate :: [JSKey] -> Value -> Value
 ngEvaluate [] x@(String _) = x
 ngEvaluate [] x@Null = x
 ngEvaluate [] x@(Number _) = x
-ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
+ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null (T.pack key) s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
-toJSKey :: Text -> [JSKey]
-toJSKey xs = map go . T.splitOn "." $ xs
+toJSKey :: String -> [JSKey]
+toJSKey xs = map go . splitOn "." $ xs
   where go x = ObjectKey x
         -- TODO translate [1] expression
 
-valueToText :: Value -> String
-valueToText (String x) = T.unpack x
-valueToText (Number x) = show x
-valueToText Null = ""
-valueToText x = show  x
+valToString :: Value -> String
+valToString (String x) = T.unpack x
+valToString (Number x) = show x
+valToString Null = ""
+valToString x = show  x
 
+-- parse String to find interpolation expressions
 
+data TextChunk = PassThrough String | Interpolation String 
+    deriving Show
+
+evalText :: Value -> TextChunk -> String
+evalText v (PassThrough s) = s
+evalText v (Interpolation s) = ngEval s v
+
+parseText :: String -> [TextChunk]
+parseText inp = 
+  case Text.Parsec.parse (many ngTextChunk) "" inp of
+    Left x -> error $ "parseText failed: " ++ show x
+    Right xs -> xs
+    
+
+-- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
+ngTextChunk =   
+    (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
+    <|> (PassThrough <$> (many1 (noneOf "{")))
 
 -- | Behaves like Ruby gsub implementation
 -- adapted from: https://coderwall.com/p/l1hoeq
