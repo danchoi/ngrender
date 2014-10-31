@@ -10,6 +10,7 @@ import Data.Aeson
 import Data.Aeson.Types
 import Data.String.QQ 
 import qualified Data.ByteString.Lazy.Char8 as B
+import qualified Data.Vector as V
 
 
 xs = ["one", "two", "three"]
@@ -24,7 +25,7 @@ processTemplate file = runX (
     >>>
       processTopDown (
         -- (repeatFragment >>> renderContext "test")
-        (repeatFragment >>> (interpolate "test"))
+        (repeatFragment items >>> (interpolate "test"))
         `when`
         (isElem >>> hasAttr "ng-repeat")
       )
@@ -33,7 +34,9 @@ processTemplate file = runX (
 
     )
 
-repeatFragment = arrL (take 2 . repeat)
+repeatFragment :: ArrowList a => Value -> a XmlTree XmlTree
+repeatFragment (Array xs) = arrL (take (V.length xs) . repeat)
+repeatFragment _ = this
 
 
 -- renderContext :: ArrowXml a => String -> a b c

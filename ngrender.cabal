@@ -24,7 +24,8 @@ executable ngrender
                        bytestring,
                        text, 
                        aeson,
-                       string-qq
+                       string-qq,
+                       vector
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
