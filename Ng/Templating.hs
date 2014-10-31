@@ -46,7 +46,7 @@ ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
 
 ngIterate :: ArrowXml a 
           => Value      -- ^ context
-          -> NgRepeat   -- ^ contains data to repeat
+          -> NgRepeat   -- ^ keys for data to repeat
           -> a XmlTree XmlTree
 ngIterate (Object context) (NgRepeat iterKey contextKey) = 
     go iterKey $< (constL $ getList (T.pack contextKey) context)
