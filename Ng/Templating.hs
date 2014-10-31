@@ -52,12 +52,12 @@ interpolate context = processTopDown (
     (isText >>> hasText (isInfixOf "{{item.body}}"))
   )
 
-
 -- | function to evaluate an ng-expression and a object value context
+-- e.g. "item.name" -> (Object ...) -> "John"
 ngEval :: Text -> Value -> String
 ngEval keyExpr context = valueToText . ngEvaluate (toJSKey keyExpr) $ context
 
-data JSKey = ObjKey Text | ArrIdx Int 
+data JSKey = ObjectKey Text | ArrayIndex Int 
     deriving Show
 
 
@@ -65,13 +65,13 @@ ngEvaluate :: [JSKey] -> Value -> Value
 ngEvaluate [] x@(String _) = x
 ngEvaluate [] x@Null = x
 ngEvaluate [] x@(Number _) = x
-ngEvaluate ((ObjKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
-ngEvaluate ((ArrIdx idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
+ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
+ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
 toJSKey :: Text -> [JSKey]
 toJSKey xs = map go . T.splitOn "." $ xs
-  where go x = ObjKey x
+  where go x = ObjectKey x
         -- TODO translate [1] expression
 
 
