@@ -28,10 +28,8 @@ data NgRepeatParameters = NgRepeatParameters String String
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
-      processTopDown (
-        ngRepeat json 
-      ) 
-      >>> generalNgProcessing json
+      processTopDown ( ngRepeat json ) 
+      >>> processTopDown (generalNgProcessing json)
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
