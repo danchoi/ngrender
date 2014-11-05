@@ -46,10 +46,13 @@ generalNgProcessing context =
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
     processTopDown (
-      (changeText (mconcat .  map (evalText context) .  parseText))
-      `when`
-      isText 
+      ((changeText (interpolateText context)) `when` isText)
+      >>>
+      (processAttrl (changeAttrValue (interpolateText context)) `when` isElem)
+      >>> 
+      ngHref
     )
+interpolateText context = mconcat .  map (evalText context) .  parseText
 
 ------------------------------------------------------------------------
 -- ngShow
@@ -69,6 +72,12 @@ ngHide context =
         $< (getAttrValue "ng-hide" >>> arr (ngEvalToBool context))
       ) >>> removeAttr "ng-hide"
     ) `when` hasNgAttr "ng-hide"
+
+------------------------------------------------------------------------
+-- ngHref simply renames ng-href to href
+
+-- ngHref = changeAttrName (const (mkName "href")) `when` has
+ngHref = undefined
 
 ------------------------------------------------------------------------
 -- ngRepeat
