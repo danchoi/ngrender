@@ -25,19 +25,21 @@ newtype NgDirective a = NgDirective a
 data NgRepeatParameters = NgRepeatParameters String String 
     deriving Show
 
-
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        ngRepeat json `when` (isElem >>> hasAttr "ng-repeat")
-      ) >>> interpolateValues json
+        ngRepeat json 
+      ) 
+      >>> generalNgProcessing json
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
 
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
+
+generalNgProcessing context = ngShow context >>> interpolateValues context
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
@@ -48,14 +50,27 @@ interpolateValues context =
     )
 
 ------------------------------------------------------------------------
+-- ngShow
+ngShow :: ArrowXml a => Value -> a XmlTree XmlTree
+ngShow context = 
+    (
+      ((\boolVal -> if boolVal then this  else none) 
+        $< (getAttrValue "ng-show" >>> arr (ngEvalToBool context))
+      ) >>> removeAttr "ng-show"
+    ) `when` hasNgAttr "ng-show"
+
+
+------------------------------------------------------------------------
 -- ngRepeat
 
 ngRepeat :: ArrowXml a 
          => Value       -- ^ the global context JSON Value
          -> a XmlTree XmlTree
 ngRepeat context = 
-    (ngRepeatIterate context $< ngRepeatKeys)
-    >>> removeAttr "ng-repeat" 
+    ((ngRepeatIterate context $< ngRepeatKeys)
+      >>> removeAttr "ng-repeat" 
+
+    ) `when` hasNgAttr "ng-repeat"
 
 ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
 ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
@@ -80,7 +95,7 @@ ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) =
         go context iterKey iterVar = 
             let mergedContext = 
                     HM.insert (T.pack iterKey) iterVar context
-            in interpolateValues (Object mergedContext)
+            in generalNgProcessing (Object mergedContext)
 ngRepeatIterate _ _ = none
 
 ------------------------------------------------------------------------
@@ -98,13 +113,26 @@ processXml v Default
 
 evalText :: Value -> TextChunk -> String
 evalText v (PassThrough s) = s
-evalText v (Interpolation s) = ngEval s v
+evalText v (Interpolation s) = ngEvalToString v s 
 
 
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. "item.name" -> (Object ...) -> "John"
-ngEval :: String -> Value -> String
-ngEval keyExpr context = valToString . ngEvaluate (toJSKey keyExpr) $ context
+ngEvalToString :: Value -> String -> String
+ngEvalToString context keyExpr = valToString . ngEvaluate (toJSKey keyExpr) $ context
+
+ngEvalToBool :: Value -> String -> Bool
+ngEvalToBool context keyExpr =
+    let keys = toJSKey keyExpr
+        val = ngEvaluate keys context
+    in valueToBool val
+
+valueToBool :: Value -> Bool
+valueToBool (String "") = False
+valueToBool (Bool False) = False
+valueToBool Null = False
+valueToBool (Bool True) = True -- not strictly necessary pattern
+valueToBool _ = True
 
 data JSKey = ObjectKey String | ArrayIndex Int 
     deriving Show
@@ -114,8 +142,12 @@ ngEvaluate :: [JSKey] -> Value -> Value
 ngEvaluate [] x@(String _) = x
 ngEvaluate [] x@Null = x
 ngEvaluate [] x@(Number _) = x
+ngEvaluate [] x@(Bool _) = x
+ngEvaluate [] x@(Object _) = x
+ngEvaluate [] x@(Array _) = x
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null (T.pack key) s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
+
 ngEvaluate _ _ = Null
 
 toJSKey :: String -> [JSKey]
@@ -126,7 +158,9 @@ toJSKey xs = map go . splitOn "." $ xs
 valToString :: Value -> String
 valToString (String x) = T.unpack x
 valToString (Number x) = show x
-valToString Null = ""
+valToString Null = "null"
+valToString (Bool True) = "true"
+valToString (Bool False) = "false"
 valToString x = show  x
 
 -- parse String to find interpolation expressions
@@ -149,5 +183,8 @@ ngTextChunk =
     (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
     <|> (PassThrough <$> (many1 (noneOf "{")))
 
+
+hasNgAttr :: ArrowXml a => String -> a XmlTree XmlTree
+hasNgAttr attrName = isElem >>> hasAttr attrName
 
 

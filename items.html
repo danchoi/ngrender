@@ -1,13 +1,22 @@
 <ul>
-  <li class="myclass" ng-repeat="item in items">
+  <li class="myclass" ng-repeat="item in items" ng-show="item.show">
     Hello {{item.name}}
     <br/> 
     Votes: {{item.votes}}
     <br/> 
     Global: {{global.name}}
+    <br/>
+    Show: {{item.show}}
+    Show2: {{item.show2}}
+    Name: {{item.name}}
+    Votes: {{item.votes}}
   </li>
 </ul>
 
 <p>
   Global: {{global.name}}
+</p>
+
+<p ng-show="global.name2">
+  Show global name
 </p>
