@@ -86,11 +86,13 @@ ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
 ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
   where parseNgRepeatExpr :: String -> NgRepeatParameters
         parseNgRepeatExpr = runParse $ do
-          iter <- many1 alphaNum
+          iter <- ngVarName
           spaces >> string "in" >> spaces
-          context <- many1 alphaNum
+          context <- ngVarName
           -- TODO deal with any appended ng-filters
           return $ NgRepeatParameters iter context
+
+ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
 ngRepeatIterate :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree XmlTree
 ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) = 
@@ -157,9 +159,9 @@ ngEvaluate [] x@(Object _) = x
 ngEvaluate [] x@(Array _) = x
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null (T.pack key) s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
-
 ngEvaluate _ _ = Null
 
+-- TODOO key may have ngFILTER appended. Just ignore it.
 toJSKey :: String -> [JSKey]
 toJSKey xs = map go . splitOn "." $ xs
   where go x = ObjectKey x
