@@ -31,7 +31,7 @@ processTemplate file json = runX (
     >>>
       processTopDown (
         ngRepeat json `when` (isElem >>> hasAttr "ng-repeat")
-      )
+      ) >>> interpolateValues json
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
