@@ -19,36 +19,45 @@ import Control.Applicative ((<*), (*>), (<$>), (<*>))
 import Data.Monoid
 import Data.List.Split
 
+newtype NgDirective a = NgDirective a
+    deriving Show
+
+data NgRepeatParameters = NgRepeatParameters String String 
+    deriving Show
 
 
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown (
-        ngRepeat json
-        `when`
-        (isElem >>> hasAttr "ng-repeat")
+        ngRepeat json `when` (isElem >>> hasAttr "ng-repeat")
       )
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
 
+------------------------------------------------------------------------
+-- ngRepeat
+
 ngRepeat :: ArrowXml a 
          => Value       -- ^ the global context JSON Value
          -> a XmlTree XmlTree
 ngRepeat context = 
-    (ngIterate context $< ngRepeatKeys)
+    (ngRepeatIterate context $< ngRepeatKeys)
     >>> removeAttr "ng-repeat" 
 
-
-ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeat
+ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
 ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
+  where parseNgRepeatExpr :: String -> NgRepeatParameters
+        parseNgRepeatExpr = runParse $ do
+          iter <- many1 alphaNum
+          spaces >> string "in" >> spaces
+          context <- many1 alphaNum
+          -- TODO deal with any appended ng-filters
+          return $ NgRepeatParameters iter context
 
-ngIterate :: ArrowXml a 
-          => Value      -- ^ context
-          -> NgRepeat   -- ^ keys for data to repeat
-          -> a XmlTree XmlTree
-ngIterate (Object context) (NgRepeat iterKey contextKey) = 
+ngRepeatIterate :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree XmlTree
+ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) = 
     go iterKey $< (constL $ getList (T.pack contextKey) context)
   where getList :: Text -> HM.HashMap Text Value -> [Value]
         getList k v = 
@@ -66,7 +75,18 @@ ngIterate (Object context) (NgRepeat iterKey contextKey) =
             `when`
             isText 
           )
-ngIterate _ _ = none
+ngRepeatIterate _ _ = none
+------------------------------------------------------------------------
+
+{- idea: pattern matching 
+
+processXml :: Value -> NgDirective -> a XmlTree XmlTree
+processXml v (NgRepeat x x) 
+processXml v (NgBind  x x) 
+processXml v (NgBindHtmlUnsafe  x x) 
+processXml v Default 
+
+-}
 
 wrapObjInKey :: Text -> Value -> Value
 wrapObjInKey k v = Object $ HM.singleton k v
@@ -85,6 +105,7 @@ ngEval keyExpr context = valToString . ngEvaluate (toJSKey keyExpr) $ context
 data JSKey = ObjectKey String | ArrayIndex Int 
     deriving Show
 
+-- evaluates the a JS key path against a Value context to a leaf Value
 ngEvaluate :: [JSKey] -> Value -> Value
 ngEvaluate [] x@(String _) = x
 ngEvaluate [] x@Null = x
@@ -124,14 +145,5 @@ ngTextChunk =
     (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
     <|> (PassThrough <$> (many1 (noneOf "{")))
 
--- | repeats the iteration placeholder key and the key tot he global context object
-data NgRepeat = NgRepeat String String  deriving Show
-
-parseNgRepeatExpr :: String -> NgRepeat 
-parseNgRepeatExpr = runParse $ do
-        iter <- many1 alphaNum
-        spaces >> string "in" >> spaces
-        context <- many1 alphaNum
-        return $ NgRepeat iter context
 
 
