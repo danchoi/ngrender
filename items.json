@@ -1,1 +1,1 @@
-{"items":[{"name":"one","votes":1}, {"name":"two","votes":2},{"name":"three","votes":3}]}
+{"global":{"name":"Gandalf"},"items":[{"name":"one","votes":1}, {"name":"two","votes":2},{"name":"three","votes":3}]}

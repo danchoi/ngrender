@@ -37,6 +37,17 @@ processTemplate file json = runX (
     )
 
 ------------------------------------------------------------------------
+-- general interpolation of {{ }} in text nodes
+
+interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
+interpolateValues context = 
+    processTopDown (
+      (changeText (mconcat .  map (evalText context) .  parseText))
+      `when`
+      isText 
+    )
+
+------------------------------------------------------------------------
 -- ngRepeat
 
 ngRepeat :: ArrowXml a 
@@ -58,24 +69,20 @@ ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
 
 ngRepeatIterate :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree XmlTree
 ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) = 
-    go iterKey $< (constL $ getList (T.pack contextKey) context)
+    go context iterKey $< (constL $ getList (T.pack contextKey) context)
   where getList :: Text -> HM.HashMap Text Value -> [Value]
         getList k v = 
             case HM.lookup k v of
               Just (Array xs) -> V.toList xs
               _ -> []
-        go iterKey iterVar = 
-          processTopDown (
-            (changeText (
-                mconcat . 
-                map (evalText (wrapObjInKey (T.pack iterKey) iterVar)) . 
-                parseText
-              )
-            )
-            `when`
-            isText 
-          )
+        -- merge iteration object with general context
+        go :: ArrowXml a => HM.HashMap Text Value -> String -> Value -> a XmlTree XmlTree
+        go context iterKey iterVar = 
+            let mergedContext = 
+                    HM.insert (T.pack iterKey) iterVar context
+            in interpolateValues (Object mergedContext)
 ngRepeatIterate _ _ = none
+
 ------------------------------------------------------------------------
 
 {- idea: pattern matching 
@@ -87,9 +94,6 @@ processXml v (NgBindHtmlUnsafe  x x)
 processXml v Default 
 
 -}
-
-wrapObjInKey :: Text -> Value -> Value
-wrapObjInKey k v = Object $ HM.singleton k v
 
 
 evalText :: Value -> TextChunk -> String
