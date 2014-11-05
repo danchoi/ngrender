@@ -163,6 +163,7 @@ ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
 -- TODOO key may have ngFILTER appended. Just ignore it.
+-- Move this to the parse
 toJSKey :: String -> [JSKey]
 toJSKey xs = map go . splitOn "." $ xs
   where go x = ObjectKey x
@@ -170,7 +171,7 @@ toJSKey xs = map go . splitOn "." $ xs
 
 valToString :: Value -> String
 valToString (String x) = T.unpack x
-valToString Null = "null"
+valToString Null = ""
 valToString (Bool True) = "true"
 valToString (Bool False) = "false"
 valToString (Number x) = 
