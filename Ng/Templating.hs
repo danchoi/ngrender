@@ -37,7 +37,10 @@ processTemplate file json = runX (
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
 
-generalNgProcessing context = ngShow context >>> interpolateValues context
+generalNgProcessing context = 
+    ngShow context >>> 
+    ngHide context >>> 
+    interpolateValues context
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
@@ -52,11 +55,19 @@ interpolateValues context =
 ngShow :: ArrowXml a => Value -> a XmlTree XmlTree
 ngShow context = 
     (
-      ((\boolVal -> if boolVal then this  else none) 
+      ((\boolVal -> if boolVal then this else none) 
         $< (getAttrValue "ng-show" >>> arr (ngEvalToBool context))
       ) >>> removeAttr "ng-show"
     ) `when` hasNgAttr "ng-show"
 
+-- Not DRY. refactor later
+ngHide :: ArrowXml a => Value -> a XmlTree XmlTree
+ngHide context = 
+    (
+      ((\boolVal -> if boolVal then none else this) 
+        $< (getAttrValue "ng-hide" >>> arr (ngEvalToBool context))
+      ) >>> removeAttr "ng-hide"
+    ) `when` hasNgAttr "ng-hide"
 
 ------------------------------------------------------------------------
 -- ngRepeat
