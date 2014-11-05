@@ -7,7 +7,7 @@ import Text.XML.HXT.Arrow.XmlArrow
 import Text.XML.HXT.DOM.TypeDefs
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, intercalate)
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.HashMap.Lazy as HM
@@ -130,8 +130,9 @@ evalText v (Interpolation s) = ngEvalToString v s
 
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. "item.name" -> (Object ...) -> "John"
+
 ngEvalToString :: Value -> String -> String
-ngEvalToString context keyExpr = valToString . ngEvaluate (toJSKey keyExpr) $ context
+ngEvalToString context keyExpr = valToString . ngEvaluate (parseKeyExpr keyExpr) $ context
 
 ngEvalToBool :: Value -> String -> Bool
 ngEvalToBool context keyExpr =
@@ -190,6 +191,16 @@ runParse parser inp =
 
 parseText :: String -> [TextChunk]
 parseText = runParse (many ngTextChunk) 
+
+parseKeyExpr :: String -> [JSKey]
+parseKeyExpr = runParse ngKey
+
+-- ignores ngFilters after keys
+-- e.g. note.title | truncate:100
+-- TODO handle filters someone, maybe with externally supplied shell program
+ngKey = do
+    ks <- sepBy1 ngVarName (char '.') 
+    return $ toJSKey (intercalate "." ks)
 
     
 
