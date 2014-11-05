@@ -18,6 +18,7 @@ import Text.Parsec
 import Control.Applicative ((<*), (*>), (<$>), (<*>))
 import Data.Monoid
 import Data.List.Split
+import Data.Scientific 
 
 newtype NgDirective a = NgDirective a
     deriving Show
@@ -166,10 +167,13 @@ toJSKey xs = map go . splitOn "." $ xs
 
 valToString :: Value -> String
 valToString (String x) = T.unpack x
-valToString (Number x) = show x
 valToString Null = "null"
 valToString (Bool True) = "true"
 valToString (Bool False) = "false"
+valToString (Number x) = 
+    case floatingOrInteger x of
+        Left float -> show float
+        Right int -> show int
 valToString x = show  x
 
 -- parse String to find interpolation expressions

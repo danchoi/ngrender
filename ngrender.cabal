@@ -28,7 +28,8 @@ executable ngrender
                        vector,
                        unordered-containers,
                        parsec,
-                       split
+                       split,
+                       scientific
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
