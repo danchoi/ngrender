@@ -52,10 +52,13 @@ process context =
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
 
+-- for debugging
+debugJSON = B.unpack . encode 
+
 generalNgProcessing context = 
     hasNgAttr "ng-repeat" `guards` 
       (
-      traceMsg 2 ("generalNg Processing with context: " ++ (B.unpack . encode $ context)) >>>
+      traceMsg 2 ("generalNg Processing with context: " ++ (debugJSON context)) >>>
       ngRepeat context
       )
 
@@ -105,11 +108,12 @@ flatten name = processAttrl
 ngRepeat :: Value       -- ^ the global context JSON Value
          -> IOSArrow XmlTree XmlTree
 ngRepeat context = 
-    (\context -> removeAttr "ng-repeat" >>> processTopDown (generalNgProcessing context)) $<
     (ngRepeatContext context $< ngRepeatKeys) 
 
 ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
-ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
+ngRepeatKeys = 
+      getAttrValue "ng-repeat" 
+      >>> arr parseNgRepeatExpr
   where parseNgRepeatExpr :: String -> NgRepeatParameters
         parseNgRepeatExpr = runParse $ do
           iter <- ngVarName
@@ -120,22 +124,29 @@ ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
-ngRepeatContext :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree Value
-ngRepeatContext (Object context) (NgRepeatParameters iterKey contextKey) = 
-    go context iterKey $< (constL $ getList (T.pack contextKey) context)
+ngRepeatContext :: Value -> NgRepeatParameters -> IOSArrow XmlTree XmlTree
+ngRepeatContext (Object context) nrp@(NgRepeatParameters iterKey contextKey) = 
+    (\iterVar ->
+      traceMsg 2 ("ngRepeatContext with keys " ++ show nrp) 
+      >>>
+      removeAttr "ng-repeat" 
+      >>>
+      let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
+      in (
+          traceMsg 2 ("ngRepeatContext mergedContext " ++ debugJSON mergedContext)  >>>
+          withTraceLevel 3 (traceSource) >>>
+          processTopDown (generalNgProcessing mergedContext)
+        )
+    ) $< (constL $ getList (T.pack contextKey) context)
   where getList :: Text -> HM.HashMap Text Value -> [Value]
         getList k v = 
             case HM.lookup k v of
               Just (Array xs) -> V.toList xs
               _ -> []
         -- merge iteration object with general context
-        go :: ArrowXml a => HM.HashMap Text Value -> String -> Value -> a XmlTree Value
-        go context iterKey iterVar = 
-            let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
-            in constA mergedContext
 ngRepeatContext _ _ = none
 
---            in (removeAttr "ng-repeat" >>> processTopDownUntil (generalNgProcessing mergedContext))
+
 
 ------------------------------------------------------------------------
 
