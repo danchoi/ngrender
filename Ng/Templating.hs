@@ -134,8 +134,18 @@ ngRepeatContext (Object context) nrp@(NgRepeatParameters iterKey contextKey) =
       let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
       in (
           traceMsg 2 ("ngRepeatContext mergedContext " ++ debugJSON mergedContext)  >>>
-          withTraceLevel 3 (traceSource) >>>
-          processTopDown (generalNgProcessing mergedContext)
+          processTopDown (
+            -- generalNgProcessing mergedContext
+            traceMsg 2 ("inside top of processTopDown in ngRepeatContext") >>>
+
+            hasNgAttr "ng-repeat" `guards` 
+                ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
+                >>> ngRepeat mergedContext
+                )
+            -- this is not reached
+            >>> traceMsg 2 ("inside bottom of processTopDown in ngRepeatContext") 
+
+          )
         )
     ) $< (constL $ getList (T.pack contextKey) context)
   where getList :: Text -> HM.HashMap Text Value -> [Value]
