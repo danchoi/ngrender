@@ -26,11 +26,14 @@ newtype NgDirective a = NgDirective a
 data NgRepeatParameters = NgRepeatParameters String String 
     deriving Show
 
-processTemplate file json = runX (
+processTemplate file context = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
-    >>> generalNgProcessing json
-    >>> processTopDown (
-      flatten "ng-href" >>> 
+    >>> 
+    generalNgProcessing context 
+    >>>
+    processTopDown (
+      flatten "ng-href" 
+      >>> 
       flatten "ng-src" 
     )
     >>>
@@ -41,12 +44,14 @@ processTemplate file json = runX (
 -- general interpolation of {{ }} in text nodes
 
 generalNgProcessing context = 
-  processTopDownUntil (
-    ngRepeat context `when` hasNgAttr "ng-repeat" >>>
-    interpolateValues context `whenNot` hasNgAttr "ng-repeat" >>>
-    ngShow context >>> 
-    ngHide context 
-  )
+     processTopDown (
+       processTopDownUntil (
+         ngRepeat context `when` (hasNgAttr "ng-repeat" )
+         >>> interpolateValues context 
+         >>> ngShow context >>> ngHide context 
+       )
+     )
+
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
