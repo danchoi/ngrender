@@ -28,9 +28,7 @@ data NgRepeatParameters = NgRepeatParameters String String
 
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
-    >>>
-      processTopDown ( ngRepeat json ) 
-      >>> generalNgProcessing json
+    >>> generalNgProcessing json
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
@@ -40,20 +38,20 @@ processTemplate file json = runX (
 
 generalNgProcessing context = 
   processTopDown (
+    (ngRepeat context `when` hasNgAttr "ng-repeat") >>>
+    (interpolateValues context `whenNot` hasNgAttr "ng-repeat") >>>
     flatten "ng-href" >>> 
     flatten "ng-src" >>>
     ngShow context >>> 
-    ngHide context >>> 
-    interpolateValues context 
+    ngHide context 
     )
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
-    processTopDown (
       ((changeText (interpolateText context)) `when` isText)
       >>>
       (processAttrl (changeAttrValue (interpolateText context)) `when` isElem)
-    )
+   
 interpolateText context = mconcat .  map (evalText context) .  parseText
 
 ------------------------------------------------------------------------
@@ -90,10 +88,8 @@ ngRepeat :: ArrowXml a
          => Value       -- ^ the global context JSON Value
          -> a XmlTree XmlTree
 ngRepeat context = 
-    ((ngRepeatIterate context $< ngRepeatKeys)
-      >>> removeAttr "ng-repeat" 
-
-    ) `when` hasNgAttr "ng-repeat"
+    (ngRepeatIterate context $< ngRepeatKeys) 
+    
 
 ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
 ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
@@ -118,9 +114,11 @@ ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) =
         -- merge iteration object with general context
         go :: ArrowXml a => HM.HashMap Text Value -> String -> Value -> a XmlTree XmlTree
         go context iterKey iterVar = 
-            let mergedContext = 
-                    HM.insert (T.pack iterKey) iterVar context
-            in generalNgProcessing (Object mergedContext)
+            let mergedContext = HM.insert (T.pack iterKey) iterVar context
+            in (removeAttr "ng-repeat" >>> 
+               (generalNgProcessing (Object mergedContext)))
+
+
 ngRepeatIterate _ _ = none
 
 ------------------------------------------------------------------------

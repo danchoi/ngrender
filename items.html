@@ -1,4 +1,10 @@
-<a ng-repeat="tag in tags">{{tag}}</a>
+<a ng-repeat="x in tags">test {{x}}</a>
+
+<div class="tag2" ng-repeat="x in tagsTwo"> 
+    {{x.tag.name}} 
+</div>
+<div class="tag3" ng-repeat="x in tags3">
+  {{x.name}}</div>
 <ul>
   <li class="myclass" ng-repeat="item in items" ng-show="item.show">
     Hello {{item.name}}
@@ -11,6 +17,7 @@
     Show2: {{item.show2}}
     Name: {{item.name}}
     Votes: {{item.votes}}
+    <span ng-repeat="p in people">{{p}}</span>
   </li>
 </ul>
 
@@ -21,7 +28,6 @@
 <p ng-hide="global.name">
   Hidden Global: {{global.name}}
 </p>
-
 
 <p ng-show="global.name2">
   Show global name

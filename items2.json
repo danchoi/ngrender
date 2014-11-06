@@ -1,5 +1,7 @@
 {
   "tags":["test","test2"],
+  "tagsTwo":[{"tag":{"name":"apple"}},{"tag":{"name":"pear"}}],
+  "tags3":[{"name":"apple"},{"name":"pear"}],
   "global": {
     "name": "Gandalf"
   },
@@ -7,7 +9,8 @@
     {
       "name": "one",
       "votes": 1.1,
-      "show": true
+      "show": true,
+      "people":["Bob","Dan","Chris"]
     },
     {
       "name": "two",
