@@ -30,7 +30,7 @@ processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>>
       processTopDown ( ngRepeat json ) 
-      >>> processTopDown (generalNgProcessing json)
+      >>> generalNgProcessing json
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
@@ -39,9 +39,13 @@ processTemplate file json = runX (
 -- general interpolation of {{ }} in text nodes
 
 generalNgProcessing context = 
+  processTopDown (
+    flatten "ng-href" >>> 
+    flatten "ng-src" >>>
     ngShow context >>> 
     ngHide context >>> 
-    interpolateValues context
+    interpolateValues context 
+    )
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
@@ -49,11 +53,6 @@ interpolateValues context =
       ((changeText (interpolateText context)) `when` isText)
       >>>
       (processAttrl (changeAttrValue (interpolateText context)) `when` isElem)
-      >>> 
-      flatten "ng-href" 
-      >>> 
-      flatten "ng-src"
-
     )
 interpolateText context = mconcat .  map (evalText context) .  parseText
 
@@ -79,7 +78,9 @@ ngHide context =
 ------------------------------------------------------------------------
 
 flatten :: ArrowXml a => String -> a XmlTree XmlTree
-flatten name = changeAttrName (const (mkName $ replacement name)) `when` (hasAttr name)
+flatten name = processAttrl 
+      (changeAttrName (const (mkName $ replacement name)))
+      `when` (isElem >>> hasAttr name)
     where replacement = drop 3
 
 ------------------------------------------------------------------------
