@@ -50,7 +50,10 @@ interpolateValues context =
       >>>
       (processAttrl (changeAttrValue (interpolateText context)) `when` isElem)
       >>> 
-      ngHref
+      flatten "ng-href" 
+      >>> 
+      flatten "ng-src"
+
     )
 interpolateText context = mconcat .  map (evalText context) .  parseText
 
@@ -74,10 +77,10 @@ ngHide context =
     ) `when` hasNgAttr "ng-hide"
 
 ------------------------------------------------------------------------
--- ngHref simply renames ng-href to href
 
--- ngHref = changeAttrName (const (mkName "href")) `when` has
-ngHref = undefined
+flatten :: ArrowXml a => String -> a XmlTree XmlTree
+flatten name = changeAttrName (const (mkName $ replacement name)) `when` (hasAttr name)
+    where replacement = drop 3
 
 ------------------------------------------------------------------------
 -- ngRepeat
