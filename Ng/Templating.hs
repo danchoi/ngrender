@@ -44,13 +44,16 @@ processTemplate file context = runX (
 -- general interpolation of {{ }} in text nodes
 
 generalNgProcessing context = 
-     processTopDown (
-       processTopDownUntil (
-         ngRepeat context `when` (hasNgAttr "ng-repeat" )
-         >>> interpolateValues context 
-         >>> ngShow context >>> ngHide context 
-       )
+     processTopDownUntil (
+        hasNgAttr "ng-repeat" `guards` ngRepeat context  
      )
+     {-
+     >>>
+     processTopDown (
+         interpolateValues context 
+         >>> ngShow context >>> ngHide context 
+     )
+     -}
 
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
@@ -124,8 +127,6 @@ ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) =
             let mergedContext = HM.insert (T.pack iterKey) iterVar context
             in (removeAttr "ng-repeat" >>> 
                (generalNgProcessing (Object mergedContext)))
-
-
 ngRepeatIterate _ _ = none
 
 ------------------------------------------------------------------------
