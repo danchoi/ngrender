@@ -29,6 +29,10 @@ data NgRepeatParameters = NgRepeatParameters String String
 processTemplate file json = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>> generalNgProcessing json
+    >>> processTopDown (
+      flatten "ng-href" >>> 
+      flatten "ng-src" 
+    )
     >>>
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
@@ -37,14 +41,12 @@ processTemplate file json = runX (
 -- general interpolation of {{ }} in text nodes
 
 generalNgProcessing context = 
-  processTopDown (
-    (ngRepeat context `when` hasNgAttr "ng-repeat") >>>
-    (interpolateValues context `whenNot` hasNgAttr "ng-repeat") >>>
-    flatten "ng-href" >>> 
-    flatten "ng-src" >>>
+  processTopDownUntil (
+    ngRepeat context `when` hasNgAttr "ng-repeat" >>>
+    interpolateValues context `whenNot` hasNgAttr "ng-repeat" >>>
     ngShow context >>> 
     ngHide context 
-    )
+  )
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
 interpolateValues context = 
