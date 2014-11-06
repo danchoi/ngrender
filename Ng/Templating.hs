@@ -29,31 +29,39 @@ data NgRepeatParameters = NgRepeatParameters String String
 processTemplate file context = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>> 
-    generalNgProcessing context 
+    setTraceLevel 2
+    >>>
+    process context
+    >>>
+    writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
+    )
+
+
+process :: Value -> IOSArrow XmlTree XmlTree
+process context = 
+    processTopDownUntil (    
+      generalNgProcessing context 
+    )
     >>>
     processTopDown (
       flatten "ng-href" 
       >>> 
       flatten "ng-src" 
     )
-    >>>
-    writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
-    )
 
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
 
 generalNgProcessing context = 
-     processTopDownUntil (
-        hasNgAttr "ng-repeat" `guards` ngRepeat context  
-     )
-     {-
-     >>>
-     processTopDown (
-         interpolateValues context 
-         >>> ngShow context >>> ngHide context 
-     )
-     -}
+    hasNgAttr "ng-repeat" `guards` 
+      (
+      traceMsg 2 ("generalNg Processing with context: " ++ (B.unpack . encode $ context)) >>>
+      ngRepeat context
+      )
+
+{-
+interpolateValues context >>> ngShow context >>> ngHide context 
+-}
 
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
@@ -94,12 +102,11 @@ flatten name = processAttrl
 ------------------------------------------------------------------------
 -- ngRepeat
 
-ngRepeat :: ArrowXml a 
-         => Value       -- ^ the global context JSON Value
-         -> a XmlTree XmlTree
+ngRepeat :: Value       -- ^ the global context JSON Value
+         -> IOSArrow XmlTree XmlTree
 ngRepeat context = 
-    (ngRepeatIterate context $< ngRepeatKeys) 
-    
+    (\context -> removeAttr "ng-repeat" >>> processTopDown (generalNgProcessing context)) $<
+    (ngRepeatContext context $< ngRepeatKeys) 
 
 ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
 ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
@@ -113,8 +120,8 @@ ngRepeatKeys = getAttrValue "ng-repeat" >>> arr parseNgRepeatExpr
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
-ngRepeatIterate :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree XmlTree
-ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) = 
+ngRepeatContext :: ArrowXml a => Value -> NgRepeatParameters -> a XmlTree Value
+ngRepeatContext (Object context) (NgRepeatParameters iterKey contextKey) = 
     go context iterKey $< (constL $ getList (T.pack contextKey) context)
   where getList :: Text -> HM.HashMap Text Value -> [Value]
         getList k v = 
@@ -122,12 +129,13 @@ ngRepeatIterate (Object context) (NgRepeatParameters iterKey contextKey) =
               Just (Array xs) -> V.toList xs
               _ -> []
         -- merge iteration object with general context
-        go :: ArrowXml a => HM.HashMap Text Value -> String -> Value -> a XmlTree XmlTree
+        go :: ArrowXml a => HM.HashMap Text Value -> String -> Value -> a XmlTree Value
         go context iterKey iterVar = 
-            let mergedContext = HM.insert (T.pack iterKey) iterVar context
-            in (removeAttr "ng-repeat" >>> 
-               (generalNgProcessing (Object mergedContext)))
-ngRepeatIterate _ _ = none
+            let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
+            in constA mergedContext
+ngRepeatContext _ _ = none
+
+--            in (removeAttr "ng-repeat" >>> processTopDownUntil (generalNgProcessing mergedContext))
 
 ------------------------------------------------------------------------
 
