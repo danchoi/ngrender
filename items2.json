@@ -1,0 +1,24 @@
+{
+  "tags":["test","test2"],
+  "global": {
+    "name": "Gandalf"
+  },
+  "items": [
+    {
+      "name": "one",
+      "votes": 1.1,
+      "show": true
+    },
+    {
+      "name": "two",
+      "votes": 2,
+      "show": false,
+      "show2": false
+    },
+    {
+      "name":"three",
+      "votes":3,
+      "show":true
+    }
+  ]
+}
