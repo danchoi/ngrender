@@ -24,6 +24,7 @@ data NgExpr = NgKeyPath [JSKey]
             | Or NgExpr NgExpr
             | And NgExpr NgExpr
             | Neg NgExpr 
+            | Compare String NgExpr NgExpr
       deriving (Show, Eq)
 
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
@@ -43,7 +44,10 @@ ngExpr = do
                     _ -> expr1'
     try (do symbol "&&"; expr2 <- ngExpr; return $ And expr1 expr2) 
      <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
+     <|> try (do op <- comparisonOp; expr2 <- ngExpr; return $ Compare op expr1 expr2) 
      <|> return expr1
+
+comparisonOp = choice $ map symbol [">", "<", "==", ">=", "<=", "!="]
 
 ngExprTerm = (char '(' *> ngExpr <* char ')') <|> ngKeyPath'
 
@@ -99,7 +103,20 @@ ngExprEval (Neg x) v        =
           Bool False -> Bool True
           String "" -> Bool True   -- ? is this right?
           _ -> Bool False
+ngExprEval (Compare op x y) v      = 
+      let vx = valueToNum $ ngExprEval x v
+          vy = valueToNum $ ngExprEval y v
+      in case op of   
+            ">" -> Bool $ vx > vy
+            "<" -> Bool $ vx < vy
+            ">=" -> Bool $ vx >= vy
+            "<=" -> Bool $ vx <= vy
+            "==" -> Bool $ vx == vy
+            "!=" -> Bool $ vx /= vy
 
+valueToNum :: RealFloat a => Value -> a
+valueToNum (Number x) = toRealFloat x
+valueToNum _ = 0      -- PUNT
 
 -- evaluates the a JS key path against a Value context to a leaf Value
 ngEvaluate :: [JSKey] -> Value -> Value
@@ -206,6 +223,8 @@ tests = test [
       And (Or (NgKeyPath [ObjectKey "test1"]) (NgKeyPath [ObjectKey "test2"])) (NgKeyPath [ObjectKey "test3"])
       @=? runParse ngExpr "(test1 || test2) && test3"
   , "parse negation"        ~: Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
+  , "parse comparison"      ~: Compare ">" (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"])
+                               @=? runParse ngExpr "test > test2"
   , "disjunction left"      ~: "apple"              @=?   ngEvalToString testContext1 "item || another" 
   , "disjunction right"     ~: "10"                 @=?   ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"              @=?   ngEvalToString testContext2 "(item.color || item.name)" 
