@@ -155,7 +155,7 @@ ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
 ngTextChunk =   
-    (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* string "}}"))
+    (Interpolation <$> (try (string "{{" *> many1 (noneOf "}") <* string "}}")))
     <|> (PassThrough <$> (many1 (noneOf "{")))
 
 -- for debugging
