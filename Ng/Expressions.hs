@@ -61,9 +61,11 @@ ngKeyPath = do
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. "item.name" -> (Object ...) -> "John"
 
+-- TODO Change to NgExpr evaluation
 ngEvalToString :: Value -> String -> String
 ngEvalToString context keyExpr = valToString . ngEvaluate (parseKeyExpr keyExpr) $ context
 
+-- TODO Change to NgExpr evaluation
 ngEvalToBool :: Value -> Text -> Bool
 ngEvalToBool context keyExpr =
     let keys = toJSKeyFromTextPath keyExpr
@@ -81,8 +83,7 @@ evalText :: Value -> TextChunk -> String
 evalText v (PassThrough s) = s
 evalText v (Interpolation s) = ngEvalToString v s
 
-
--- convenience function around ngEvaluate which takes a ke
+-- convenience function around ngEvaluate which takes a key
 ngEval :: [Text] -> Value -> Value
 ngEval keyPath context = ngEvaluate (map toJSKey keyPath) context
 
@@ -178,12 +179,8 @@ tests = test [
       And (Or (NgKeyPath [ObjectKey "test1"]) (NgKeyPath [ObjectKey "test2"])) (NgKeyPath [ObjectKey "test3"])
       @=? runParse ngExpr "(test1 || test2) && test3"
   , "parse negation"        ~:  Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
-
-
-  {-
   , "disjunction"           ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
   , "disjunction in parens" ~:  "10"                 @=?   ngEvalToString testContext1 "(item.color || item.price)" 
-  -}
 
              ]
 
