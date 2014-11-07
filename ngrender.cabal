@@ -29,7 +29,8 @@ executable ngrender
                        unordered-containers,
                        parsec,
                        split,
-                       scientific
+                       scientific,
+                       HUnit
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
