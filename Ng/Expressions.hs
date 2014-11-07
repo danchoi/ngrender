@@ -50,8 +50,22 @@ ngExprTerm = (char '(' *> ngExpr <* char ')') <|> ngKeyPath'
 ngKeyPath' = NgKeyPath <$> ngKeyPath 
 
 ngKeyPath = do
-    ks <- sepBy1 ngVarName (char '.') 
-    return $ map (toJSKey . T.pack) ks
+    ks <- sepBy1 (toJSKey . T.pack <$> ngVarName) (char '.') 
+    idx' <- optionMaybe ngArrayIndex 
+    case idx' of
+      Just idx -> return $ ks ++ [idx]
+      Nothing -> return ks
+
+ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
+
+ngArrayIndex :: ParsecT String () Identity JSKey
+ngArrayIndex = ArrayIndex <$> (
+        do 
+            char '[' 
+            x <- many1 digit
+            char ']'
+            return . read $ x
+        )
 
 
 ------------------------------------------------------------------------
@@ -146,8 +160,6 @@ parseText = runParse (many ngTextChunk)
 parseKeyExpr :: String -> [JSKey]
 parseKeyExpr = runParse ngKeyPath
 
-ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
-
 ngTextChunk :: ParsecT String () Identity TextChunk
 ngTextChunk = interpolationChunk <|> passThroughChunk
 
@@ -188,6 +200,8 @@ tests = test [
     "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
   , "ngEvalToString"        ~: "apple"              @=?   ngEvalToString testContext1 "item" 
   , "ngEvalToString2"       ~: "apple"              @=?   ngEvalToString testContext2 "item.name" 
+  , "parse array index"     ~: ArrayIndex 2         @=?   runParse ngArrayIndex "[2]"
+  , "array index"           ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
   , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
   , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
                                @=? runParse ngExpr "test"
