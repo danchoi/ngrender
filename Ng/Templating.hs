@@ -195,7 +195,7 @@ valueToBool Null = False
 valueToBool (Bool True) = True -- not strictly necessary pattern
 valueToBool _ = True
 
-data JSKey = ObjectKey Text | ArrayIndex Int 
+data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving Show
 
 -- convenience function around ngEvaluate which takes a ke
@@ -210,6 +210,10 @@ ngEvaluate [] x@(Number _) = x
 ngEvaluate [] x@(Bool _) = x
 ngEvaluate [] x@(Object _) = x
 ngEvaluate [] x@(Array _) = x
+ngEvaluate ((ObjectKey key):(Method "length"):[]) (Object s) = 
+    case (HM.lookup key s) of
+        (Just (Array vs)) -> toJSON $ V.length vs
+        x -> error $ "length lookup " ++ show key ++ " found: " ++ show x
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
@@ -220,9 +224,10 @@ ngEvaluate _ _ = Null
 toJSKeyFromTextPath :: Text -> [JSKey]
 toJSKeyFromTextPath p = map toJSKey . T.splitOn "." $ p
 
+-- TODO translate [1] expression
 toJSKey :: Text -> JSKey
+toJSKey "length" = Method "length"
 toJSKey x = ObjectKey x
-        -- TODO translate [1] expression
 
 valToString :: Value -> String
 valToString (String x) = T.unpack x
