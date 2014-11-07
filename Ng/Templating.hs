@@ -226,6 +226,7 @@ toJSKeyFromTextPath :: Text -> [JSKey]
 toJSKeyFromTextPath p = map toJSKey . T.splitOn "." $ p
 
 -- TODO translate [1] expression
+-- CHANGE TO PARSEC
 toJSKey :: Text -> JSKey
 toJSKey "length" = Method "length"
 toJSKey x = ObjectKey x
