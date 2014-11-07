@@ -49,14 +49,16 @@ process context =
 
 normalNgProcess context = processTopDown (
       ngRepeat context `when` hasNgAttr "ng-repeat"
-      >>> interpolateValues context >>> ngShow context >>> ngHide context  
+      >>> interpolateValues context 
+      >>> ngShow context 
+      >>> ngHide context  
+      >>> ngBind context
+      >>> ngBindHtml context
+      >>> ngBindHtmlUnsafe context
     )
 
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
-
-generalNgProcessing context = 
-    hasNgAttr "ng-repeat" `guards` ( ngRepeat context)
 
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
@@ -66,6 +68,22 @@ interpolateValues context =
       (processAttrl (changeAttrValue (interpolateText context)) `when` isElem)
    
 interpolateText context = mconcat .  map (evalText context) .  parseText
+
+ngBindBase tag context = 
+    (
+      --txt $< (getAttrValue tag >>> arr (ngEvalToString context) )
+      replaceChildren (
+        (getAttrValue tag >>> arr (ngEvalToString context) ) >>> xread
+      ) >>> removeAttr tag
+    ) `when` hasNgAttr tag
+
+ngBind = ngBindBase "ng-bind"
+ngBindHtml = ngBindBase "ng-bind-html"
+ngBindHtmlUnsafe = ngBindBase "ng-bind-html-unsafe"
+
+-- ng-bind-html
+
+-- ng-bind-html-unsafe
 
 ------------------------------------------------------------------------
 -- ngShow
