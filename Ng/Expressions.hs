@@ -130,11 +130,13 @@ jsonToValue = fromJust . decode
 
 runTests = runTestTT tests
 
-simpleContext1 = jsonToValue [s|{"item":"apple"}|]
+testContext1 = jsonToValue  [s|{"item":"apple"}|]
+testContext2 = jsonToValue  [s|{"item":{"name":"apple"}}|]
 
 tests = test [
     "parseKeyExpr"    ~:  [ObjectKey "item"]   @=?     parseKeyExpr "item"
-  , "ngEvalToString"  ~:  "apple"              @=?     ngEvalToString simpleContext1 "item" 
+  , "ngEvalToString"  ~:  "apple"              @=?     ngEvalToString testContext1 "item" 
+  , "ngEvalToString2" ~:  "apple"              @=?     ngEvalToString testContext2 "item.name" 
              ]
 
 
