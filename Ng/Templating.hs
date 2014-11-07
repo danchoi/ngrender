@@ -23,7 +23,7 @@ import Data.Scientific
 newtype NgDirective a = NgDirective a
     deriving Show
 
-data NgRepeatParameters = NgRepeatParameters String String 
+data NgRepeatKeys = NgRepeatKeys Text [Text]
     deriving Show
 
 processTemplate file context = runX (
@@ -77,7 +77,7 @@ ngShow :: ArrowXml a => Value -> a XmlTree XmlTree
 ngShow context = 
     (
       ((\boolVal -> if boolVal then this else none) 
-        $< (getAttrValue "ng-show" >>> arr (ngEvalToBool context))
+        $< (getAttrValue "ng-show" >>> arr (ngEvalToBool context . T.pack))
       ) >>> removeAttr "ng-show"
     ) `when` hasNgAttr "ng-show"
 
@@ -86,7 +86,7 @@ ngHide :: ArrowXml a => Value -> a XmlTree XmlTree
 ngHide context = 
     (
       ((\boolVal -> if boolVal then none else this) 
-        $< (getAttrValue "ng-hide" >>> arr (ngEvalToBool context))
+        $< (getAttrValue "ng-hide" >>> arr (ngEvalToBool context . T.pack))
       ) >>> removeAttr "ng-hide"
     ) `when` hasNgAttr "ng-hide"
 
@@ -106,45 +106,48 @@ ngRepeat :: Value       -- ^ the global context JSON Value
 ngRepeat context = 
     (ngRepeatContext context $< ngRepeatKeys) 
 
-ngRepeatKeys :: IOSArrow XmlTree NgRepeatParameters
+ngRepeatKeys :: IOSArrow XmlTree NgRepeatKeys
 ngRepeatKeys = 
       getAttrValue "ng-repeat" 
       >>> traceValue 2 (show)
       >>> arr parseNgRepeatExpr
-  where parseNgRepeatExpr :: String -> NgRepeatParameters
+  where parseNgRepeatExpr :: String -> NgRepeatKeys
         parseNgRepeatExpr = runParse $ do
-          iter <- ngVarName
+          iterVarName <- ngVarName
           spaces >> string "in" >> spaces
-          context <- ngVarName
+          keyPathToArray <- sepBy1 ngVarName (char '.')
           -- TODO deal with any appended ng-filters
-          return $ NgRepeatParameters iter context
+          return $ NgRepeatKeys (T.pack iterVarName) (map T.pack keyPathToArray)
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
-ngRepeatContext :: Value -> NgRepeatParameters -> IOSArrow XmlTree XmlTree
-ngRepeatContext (Object context) nrp@(NgRepeatParameters iterKey contextKey) = 
+ngRepeatContext :: Value -> NgRepeatKeys -> IOSArrow XmlTree XmlTree
+ngRepeatContext c@(Object context) nrp@(NgRepeatKeys iterVarName keyPathToArray) = 
     (\iterVar ->
-      traceMsg 2 ("ngRepeatContext with keys " ++ show nrp) 
+      traceMsg 2 ("* ngRepeatContext with ngRepeatKeys " ++ show nrp) 
       >>>
       removeAttr "ng-repeat" 
       >>>
-      let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
+      let mergedContext = Object $ HM.insert iterVarName iterVar context
       in (
           processTopDown (
-
               ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
               >>> ngRepeat mergedContext `when` hasNgAttr "ng-repeat"
               )
-
-
-
           )
         )
-    ) $< (constL $ getList (T.pack contextKey) context)
-  where getList :: Text -> HM.HashMap Text Value -> [Value]
-        getList k v = 
-            case HM.lookup k v of
-              Just (Array xs) -> V.toList xs
+    ) $< (
+
+            traceMsg 2 ("constL getList key " ++ show keyPathToArray ++ " for context " ++ debugJSON c)
+            >>>
+            constL (getList $ ngEval keyPathToArray c)
+            >>> traceValue 2 show
+         )
+  -- THIS IS THE BUG. k can be a key path
+  where getList :: Value -> [Value]
+        getList v = 
+            case v of
+              Array xs -> V.toList xs
               _ -> []
         -- merge iteration object with general context
 ngRepeatContext _ _ = none
@@ -175,9 +178,9 @@ evalText v (Interpolation s) = ngEvalToString v s
 ngEvalToString :: Value -> String -> String
 ngEvalToString context keyExpr = valToString . ngEvaluate (parseKeyExpr keyExpr) $ context
 
-ngEvalToBool :: Value -> String -> Bool
+ngEvalToBool :: Value -> Text -> Bool
 ngEvalToBool context keyExpr =
-    let keys = toJSKey keyExpr
+    let keys = toJSKeyFromTextPath keyExpr
         val = ngEvaluate keys context
     in valueToBool val
 
@@ -188,8 +191,12 @@ valueToBool Null = False
 valueToBool (Bool True) = True -- not strictly necessary pattern
 valueToBool _ = True
 
-data JSKey = ObjectKey String | ArrayIndex Int 
+data JSKey = ObjectKey Text | ArrayIndex Int 
     deriving Show
+
+-- convenience function around ngEvaluate which takes a ke
+ngEval :: [Text] -> Value -> Value
+ngEval keyPath context = ngEvaluate (map toJSKey keyPath) context
 
 -- evaluates the a JS key path against a Value context to a leaf Value
 ngEvaluate :: [JSKey] -> Value -> Value
@@ -199,15 +206,18 @@ ngEvaluate [] x@(Number _) = x
 ngEvaluate [] x@(Bool _) = x
 ngEvaluate [] x@(Object _) = x
 ngEvaluate [] x@(Array _) = x
-ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null (T.pack key) s)
+ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
 -- TODOO key may have ngFILTER appended. Just ignore it.
 -- Move this to the parse
-toJSKey :: String -> [JSKey]
-toJSKey xs = map go . splitOn "." $ xs
-  where go x = ObjectKey x
+
+toJSKeyFromTextPath :: Text -> [JSKey]
+toJSKeyFromTextPath p = map toJSKey . T.splitOn "." $ p
+
+toJSKey :: Text -> JSKey
+toJSKey x = ObjectKey x
         -- TODO translate [1] expression
 
 valToString :: Value -> String
@@ -242,7 +252,7 @@ parseKeyExpr = runParse ngKey
 -- TODO handle filters someone, maybe with externally supplied shell program
 ngKey = do
     ks <- sepBy1 ngVarName (char '.') 
-    return $ toJSKey (intercalate "." ks)
+    return $ map (toJSKey . T.pack) ks
 
     
 
