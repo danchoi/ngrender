@@ -141,7 +141,7 @@ runParse parser inp =
     Right xs -> xs
 
 parseText :: String -> [TextChunk]
-parseText = runParse (many1 ngTextChunk) 
+parseText = runParse (many ngTextChunk) 
 
 parseKeyExpr :: String -> [JSKey]
 parseKeyExpr = runParse ngKeyPath
@@ -206,7 +206,8 @@ tests = test [
   , "text chunk 2"          ~: PassThrough "test"    @=? runParse passThroughChunk "test"
   , "text chunk 3"          ~: PassThrough " test"   @=? runParse ngTextChunk " test"
   , "text chunk 4"          ~: " test"               @=? runParse passThrough " test"
-  -- , "text chunks"           ~: [PassThrough " test ",Interpolation "test2",PassThrough " test"] @=? runParse (many1 ngTextChunk) " test {{test2}} test"
+  , "text chunks"           ~: [PassThrough " test ",Interpolation "test2",PassThrough " test"] @=? parseText " test {{test2}} test"
+  , "text empty"            ~: [] @=? parseText ""
 
              ]
 
