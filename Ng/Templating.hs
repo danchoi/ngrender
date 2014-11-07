@@ -69,6 +69,7 @@ interpolateValues context =
    
 interpolateText context = mconcat .  map (evalText context) .  parseText
 
+ngBindBase :: String -> Value -> IOSArrow XmlTree XmlTree
 ngBindBase tag context = 
     (
       --txt $< (getAttrValue tag >>> arr (ngEvalToString context) )

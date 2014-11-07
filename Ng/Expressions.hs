@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Ng.Expressions where
 import Text.Parsec hiding (many, (<|>))
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Monoid
 import Data.List.Split
 import Data.Scientific 
@@ -177,12 +177,14 @@ interpolationChunk = do
 passThroughChunk = PassThrough <$> passThrough
 
 passThrough = do
-    xs <- many1 (noneOf "{")
-    x <- (eof *> pure "{{") <|> lookAhead (try (string "{{"))
+    -- a lead single { char. This is guaranteed not to be part of {{
+    t <- optionMaybe (string "{") 
+    xs <- many1 (noneOf "{") 
+    x <- (eof *> pure "{{") <|> lookAhead (try (string "{{") <|> string "{")
     res <- case x of 
               "{{" -> return []
-              "" -> passThrough 
-    return $ xs ++ res
+              "{" -> ('{':) <$> passThrough 
+    return $ (fromMaybe "" t) ++ xs ++ res
 
 -- for debugging
 debugJSON = B.unpack . encode 
