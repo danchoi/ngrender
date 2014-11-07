@@ -29,7 +29,7 @@ data NgRepeatKeys = NgRepeatKeys Text [Text]
 processTemplate file context = runX (
     readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file
     >>> 
-    setTraceLevel 2
+    setTraceLevel 0
     >>>
     process context
     >>>
@@ -39,15 +39,24 @@ processTemplate file context = runX (
 
 process :: Value -> IOSArrow XmlTree XmlTree
 process context = 
-    processTopDownUntil (    
-      hasNgAttr "ng-repeat" `guards` ( ngRepeat context)
-    )
+    normalNgProcess context
     >>>
     processTopDown (
+
       flatten "ng-href" 
       >>> 
       flatten "ng-src" 
     )
+
+normalNgProcess context = processTopDown (
+      ngRepeat context `when` hasNgAttr "ng-repeat"
+      >>> interpolateValues context >>> ngShow context >>> ngHide context  
+    )
+
+{-
+interpolateValues context >>> ngShow context >>> ngHide context 
+-}
+
 
 ------------------------------------------------------------------------
 -- general interpolation of {{ }} in text nodes
@@ -57,10 +66,6 @@ debugJSON = B.unpack . encode
 
 generalNgProcessing context = 
     hasNgAttr "ng-repeat" `guards` ( ngRepeat context)
-
-{-
-interpolateValues context >>> ngShow context >>> ngHide context 
--}
 
 
 interpolateValues :: ArrowXml a => Value -> a XmlTree XmlTree
@@ -130,14 +135,13 @@ ngRepeatContext c@(Object context) nrp@(NgRepeatKeys iterVarName keyPathToArray)
       >>>
       let mergedContext = Object $ HM.insert iterVarName iterVar context
       in (
-          processTopDown (
-              ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
-              >>> ngRepeat mergedContext `when` hasNgAttr "ng-repeat"
-              )
-          )
+
+            ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
+            >>> normalNgProcess mergedContext
+            )
+
         )
     ) $< (
-
             traceMsg 2 ("constL getList key " ++ show keyPathToArray ++ " for context " ++ debugJSON c)
             >>>
             constL (getList $ ngEval keyPathToArray c)
