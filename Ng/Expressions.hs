@@ -19,7 +19,7 @@ import Data.String.QQ
 
 -- TODO use this expression data type instead of JSKey directly
 
-data NgExpr = JSKey JSKey 
+data NgExpr = JSKeyPath [JSKey]
             | Or NgExpr NgExpr
             | And NgExpr NgExpr
             | Neg NgExpr 
@@ -30,6 +30,26 @@ data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
 
 data TextChunk = PassThrough String | Interpolation String 
     deriving (Show, Eq)
+
+
+symbol s = spaces *> string s <* spaces
+
+ngExpr = (char '(' *> ngExpr <* char ')') <|> ngExpr'
+
+ngExpr' = do
+    expr1 <- JSKeyPath <$> ngKeyPath
+    try (do symbol "&&"; expr2 <- ngExpr; return $ And expr1 expr2) 
+     <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
+     <|> return expr1
+              
+ngKeyPath = do
+    ks <- sepBy1 ngVarName (char '.') 
+    return $ map (toJSKey . T.pack) ks
+
+-- TODO handle filters someone, maybe with externally supplied shell program
+-- e.g. note.title | truncate:100
+
+------------------------------------------------------------------------
 
 
 -- | function to evaluate an ng-expression and a object value context
@@ -112,14 +132,8 @@ parseText :: String -> [TextChunk]
 parseText = runParse (many ngTextChunk) 
 
 parseKeyExpr :: String -> [JSKey]
-parseKeyExpr = runParse ngKey
+parseKeyExpr = runParse ngKeyPath
 
--- ignores ngFilters after keys
--- e.g. note.title | truncate:100
--- TODO handle filters someone, maybe with externally supplied shell program
-ngKey = do
-    ks <- sepBy1 ngVarName (char '.') 
-    return $ map (toJSKey . T.pack) ks
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
@@ -148,9 +162,19 @@ tests = test [
   , "ngEvalToString"        ~:  "apple"              @=?   ngEvalToString testContext1 "item" 
   , "ngEvalToString2"       ~:  "apple"              @=?   ngEvalToString testContext2 "item.name" 
   , "length method"         ~:  "3"                  @=?   ngEvalToString testContext3 "items.length" 
-  -- TODO
+  , "parse ngexpr 1"        ~:  JSKeyPath [ObjectKey "test"]  
+                                @=? runParse ngExpr "test"
+  , "parse ngexpr 2"        ~:  (Or (JSKeyPath [ObjectKey "test"]) (JSKeyPath [ObjectKey "test2"]))
+                                @=? runParse ngExpr "test || test2"
+  , "parse ngexpr 3"        ~:  (Or (JSKeyPath [ObjectKey "test"]) (JSKeyPath [ObjectKey "test2"]))
+                                @=? runParse ngExpr "(test || test2)"
+  -- TODO, fails
+  , "parse ngexpr 4"        ~:  (Or (JSKeyPath [ObjectKey "test"]) (JSKeyPath [ObjectKey "test2"]))
+                                @=? runParse ngExpr "(test3 || test2) && test3"
+  {-
   , "disjunction"           ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
   , "disjunction in parens" ~:  "10"                 @=?   ngEvalToString testContext1 "(item.color || item.price)" 
+  -}
 
              ]
 
