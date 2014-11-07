@@ -239,7 +239,7 @@ valToString (Number x) =
     case floatingOrInteger x of
         Left float -> show float
         Right int -> show int
-valToString x = show  x
+valToString x = debugJSON x
 
 -- parse String to find interpolation expressions
 
