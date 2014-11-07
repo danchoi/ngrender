@@ -40,7 +40,7 @@ processTemplate file context = runX (
 process :: Value -> IOSArrow XmlTree XmlTree
 process context = 
     processTopDownUntil (    
-      generalNgProcessing context 
+      hasNgAttr "ng-repeat" `guards` ( ngRepeat context)
     )
     >>>
     processTopDown (
@@ -56,11 +56,7 @@ process context =
 debugJSON = B.unpack . encode 
 
 generalNgProcessing context = 
-    hasNgAttr "ng-repeat" `guards` 
-      (
-      traceMsg 2 ("generalNg Processing with context: " ++ (debugJSON context)) >>>
-      ngRepeat context
-      )
+    hasNgAttr "ng-repeat" `guards` ( ngRepeat context)
 
 {-
 interpolateValues context >>> ngShow context >>> ngHide context 
@@ -110,9 +106,10 @@ ngRepeat :: Value       -- ^ the global context JSON Value
 ngRepeat context = 
     (ngRepeatContext context $< ngRepeatKeys) 
 
-ngRepeatKeys :: ArrowXml a => a XmlTree NgRepeatParameters
+ngRepeatKeys :: IOSArrow XmlTree NgRepeatParameters
 ngRepeatKeys = 
       getAttrValue "ng-repeat" 
+      >>> traceValue 2 (show)
       >>> arr parseNgRepeatExpr
   where parseNgRepeatExpr :: String -> NgRepeatParameters
         parseNgRepeatExpr = runParse $ do
@@ -133,17 +130,13 @@ ngRepeatContext (Object context) nrp@(NgRepeatParameters iterKey contextKey) =
       >>>
       let mergedContext = Object $ HM.insert (T.pack iterKey) iterVar context
       in (
-          traceMsg 2 ("ngRepeatContext mergedContext " ++ debugJSON mergedContext)  >>>
           processTopDown (
-            -- generalNgProcessing mergedContext
-            traceMsg 2 ("inside top of processTopDown in ngRepeatContext") >>>
 
-            hasNgAttr "ng-repeat" `guards` 
-                ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
-                >>> ngRepeat mergedContext
-                )
-            -- this is not reached
-            >>> traceMsg 2 ("inside bottom of processTopDown in ngRepeatContext") 
+              ( traceMsg 2 ("nested NGREPEAT context: " ++ (debugJSON mergedContext)) 
+              >>> ngRepeat mergedContext `when` hasNgAttr "ng-repeat"
+              )
+
+
 
           )
         )
