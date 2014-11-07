@@ -63,13 +63,12 @@ ngKeyPath = do
 
 -- TODO Change to NgExpr evaluation
 ngEvalToString :: Value -> String -> String
-ngEvalToString context keyExpr = valToString . ngEvaluate (parseKeyExpr keyExpr) $ context
+ngEvalToString context exprString = valToString . ngExprEval (runParse ngExpr exprString) $ context
 
--- TODO Change to NgExpr evaluation
 ngEvalToBool :: Value -> Text -> Bool
-ngEvalToBool context keyExpr =
-    let keys = toJSKeyFromTextPath keyExpr
-        val = ngEvaluate keys context
+ngEvalToBool context exprString =
+    let expr = runParse ngExpr (T.unpack exprString)
+        val = ngExprEval expr context
     in valueToBool val
 
 valueToBool :: Value -> Bool
@@ -83,9 +82,25 @@ evalText :: Value -> TextChunk -> String
 evalText v (PassThrough s) = s
 evalText v (Interpolation s) = ngEvalToString v s
 
--- convenience function around ngEvaluate which takes a key
 ngEval :: [Text] -> Value -> Value
-ngEval keyPath context = ngEvaluate (map toJSKey keyPath) context
+ngEval keyPath context = ngExprEval (NgKeyPath $ map toJSKey keyPath) context
+
+ngExprEval :: NgExpr -> Value -> Value
+ngExprEval (NgKeyPath ks) v = ngEvaluate ks v
+ngExprEval (Or x y) v       = 
+      let vx = ngExprEval x v 
+      in if (valueToBool vx) then vx else (ngExprEval y v)
+ngExprEval (And x y) v      = 
+      let vx = ngExprEval x v
+      in if (valueToBool vx) then (ngExprEval y v) else (Bool False)
+ngExprEval (Neg x) v        = 
+      let vx = ngExprEval x v
+      in case vx of 
+          Null  -> Bool True
+          Bool False -> Bool True
+          String "" -> Bool True   -- ? is this right?
+          _ -> Bool False
+
 
 -- evaluates the a JS key path against a Value context to a leaf Value
 ngEvaluate :: [JSKey] -> Value -> Value
@@ -104,11 +119,6 @@ ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Nul
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
 
--- TODOO key may have ngFILTER appended. Just ignore it.
--- Move this to the parse
-
-toJSKeyFromTextPath :: Text -> [JSKey]
-toJSKeyFromTextPath p = map toJSKey . T.splitOn "." $ p
 
 -- TODO translate [1] expression
 -- CHANGE TO PARSEC
@@ -141,7 +151,6 @@ parseText = runParse (many ngTextChunk)
 parseKeyExpr :: String -> [JSKey]
 parseKeyExpr = runParse ngKeyPath
 
-
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
@@ -160,7 +169,7 @@ jsonToValue = fromJust . decode
 
 runTests = runTestTT tests
 
-testContext1      = jsonToValue  [s|{"item":"apple","price":10}|]
+testContext1      = jsonToValue  [s|{"item":"apple","another":10}|]
 testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
 testContext3      = jsonToValue  [s|{"items":[1,2,3]}|]
 
@@ -179,8 +188,9 @@ tests = test [
       And (Or (NgKeyPath [ObjectKey "test1"]) (NgKeyPath [ObjectKey "test2"])) (NgKeyPath [ObjectKey "test3"])
       @=? runParse ngExpr "(test1 || test2) && test3"
   , "parse negation"        ~:  Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
-  , "disjunction"           ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
-  , "disjunction in parens" ~:  "10"                 @=?   ngEvalToString testContext1 "(item.color || item.price)" 
+  , "disjunction left"      ~:  "apple"              @=?   ngEvalToString testContext1 "item || another" 
+  , "disjunction right"     ~:  "10"                 @=?   ngEvalToString testContext1 "blah || another" 
+  , "disjunction in parens" ~:  "apple"              @=?   ngEvalToString testContext2 "(item.color || item.name)" 
 
              ]
 
