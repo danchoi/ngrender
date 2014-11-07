@@ -148,11 +148,26 @@ parseKeyExpr = runParse ngKeyPath
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
--- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
 ngTextChunk :: ParsecT String () Identity TextChunk
-ngTextChunk =   
-    (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* (spaces >> string "}}")))
-      <|> (PassThrough <$> many1 (noneOf "{"))
+ngTextChunk = interpolationChunk <|> passThroughChunk
+
+interpolationChunk = do
+    try (string "{{")
+    spaces
+    xs <- manyTill anyChar (lookAhead $ try (string "}}"))
+    spaces
+    string "}}"
+    return $ Interpolation xs
+
+passThroughChunk = PassThrough <$> passThrough
+
+passThrough = do
+    xs <- many (noneOf "{")
+    x <- (eof *> pure "{{") <|> lookAhead (try (string "{{"))
+    res <- case x of 
+              "{{" -> return []
+              "" -> passThrough 
+    return $ xs ++ res
 
 -- for debugging
 debugJSON = B.unpack . encode 
@@ -187,9 +202,10 @@ tests = test [
   , "disjunction left"      ~: "apple"              @=?   ngEvalToString testContext1 "item || another" 
   , "disjunction right"     ~: "10"                 @=?   ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"              @=?   ngEvalToString testContext2 "(item.color || item.name)" 
-  , "text chunk 1"          ~: Interpolation "test" @=? runParse ngTextChunk "{{test}}"
-  , "text chunk 2"          ~: PassThrough "test"   @=? runParse ngTextChunk "test"
+  , "text chunk 1"          ~: Interpolation "test"  @=? runParse interpolationChunk "{{test}}"
+  , "text chunk 2"          ~: PassThrough "test"    @=? runParse passThroughChunk "test"
   , "text chunk 3"          ~: PassThrough " test"   @=? runParse ngTextChunk " test"
+  , "text chunk 4"          ~: " test"               @=? runParse passThrough " test"
   , "text chunks"           ~: [PassThrough " test ",Interpolation "test2",PassThrough " test"]
                                @=? runParse (many ngTextChunk) " test {{test2}} test"
 
