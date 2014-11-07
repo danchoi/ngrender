@@ -213,7 +213,8 @@ ngEvaluate [] x@(Array _) = x
 ngEvaluate ((ObjectKey key):(Method "length"):[]) (Object s) = 
     case (HM.lookup key s) of
         (Just (Array vs)) -> toJSON $ V.length vs
-        x -> error $ "length lookup " ++ show key ++ " found: " ++ show x
+        -- x -> error $ "length lookup " ++ show key ++ " found: " ++ show x
+        _ -> Null
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
 ngEvaluate _ _ = Null
