@@ -16,8 +16,8 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Test.HUnit 
 import Data.String.QQ
 
-
--- TODO use this expression data type instead of JSKey directly
+-- TODO handle filters someone, maybe with externally supplied shell program
+-- e.g. note.title | truncate:100
 
 data NgExpr = NgKeyPath [JSKey]
             | Or NgExpr NgExpr
@@ -52,16 +52,11 @@ ngKeyPath = do
     ks <- sepBy1 ngVarName (char '.') 
     return $ map (toJSKey . T.pack) ks
 
--- TODO handle filters someone, maybe with externally supplied shell program
--- e.g. note.title | truncate:100
 
 ------------------------------------------------------------------------
 
-
 -- | function to evaluate an ng-expression and a object value context
--- e.g. "item.name" -> (Object ...) -> "John"
-
--- TODO Change to NgExpr evaluation
+-- e.g. Value -> "item.name" -> "John"
 ngEvalToString :: Value -> String -> String
 ngEvalToString context exprString = valToString . ngExprEval (runParse ngExpr exprString) $ context
 
@@ -138,7 +133,6 @@ valToString (Number x) =
 valToString x = debugJSON x
 
 -- parse String to find interpolation expressions
-
 
 runParse parser inp =
   case Text.Parsec.parse parser "" inp of
