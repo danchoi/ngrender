@@ -135,12 +135,13 @@ testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
 testContext3      = jsonToValue  [s|{"items":[1,2,3]}|]
 
 tests = test [
-    "parseKeyExpr"    ~:  [ObjectKey "item"]   @=?   parseKeyExpr "item"
-  , "ngEvalToString"  ~:  "apple"              @=?   ngEvalToString testContext1 "item" 
-  , "ngEvalToString2" ~:  "apple"              @=?   ngEvalToString testContext2 "item.name" 
-  , "length method"   ~:  "3"                  @=?   ngEvalToString testContext3 "items.length" 
+    "parseKeyExpr"          ~:  [ObjectKey "item"]   @=?   parseKeyExpr "item"
+  , "ngEvalToString"        ~:  "apple"              @=?   ngEvalToString testContext1 "item" 
+  , "ngEvalToString2"       ~:  "apple"              @=?   ngEvalToString testContext2 "item.name" 
+  , "length method"         ~:  "3"                  @=?   ngEvalToString testContext3 "items.length" 
   -- TODO
-  , "disjunction"     ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
+  , "disjunction"           ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
+  , "disjunction in parens" ~:  "10"                 @=?   ngEvalToString testContext1 "(item.color || item.price)" 
 
              ]
 
