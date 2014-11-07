@@ -1,6 +1,6 @@
 module Main where
 import Ng.Templating
-import Ng.Tests
+import Ng.Expressions
 import System.Environment
 import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Aeson

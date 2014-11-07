@@ -1,6 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Ng.Expressions where
 import Text.Parsec hiding (many, (<|>))
+import Data.Maybe (fromJust)
 import Data.Monoid
 import Data.List.Split
 import Data.Scientific 
@@ -12,13 +13,15 @@ import Control.Applicative
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Vector as V
 import qualified Data.ByteString.Lazy.Char8 as B
+import Test.HUnit 
+import Data.String.QQ
 
 
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
-    deriving Show
+    deriving (Show, Eq)
 
 data TextChunk = PassThrough String | Interpolation String 
-    deriving Show
+    deriving (Show, Eq)
 
 
 -- | function to evaluate an ng-expression and a object value context
@@ -119,5 +122,22 @@ ngTextChunk =
 
 -- for debugging
 debugJSON = B.unpack . encode 
+
+jsonToValue :: B.ByteString -> Value
+jsonToValue = fromJust . decode
+
+j = jsonToValue
+
+------------------------------------------------------------------------
+-- Tests
+
+runTests = runTestTT tests
+
+tests = test [
+    "parseKeyExpr"    ~: [ObjectKey "item"] @=? parseKeyExpr "item"
+  , "ngEvalToString"  ~: "apple" @=? ngEvalToString (j [s|{"item":"apple"}|]) "item" 
+             ]
+
+
 
 
