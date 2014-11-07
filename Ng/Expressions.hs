@@ -126,7 +126,10 @@ ngEvaluate ((ObjectKey key):(Method "length"):[]) (Object s) =
         -- x -> error $ "length lookup " ++ show key ++ " found: " ++ show x
         _ -> Null
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
-ngEvaluate ((ArrayIndex idx):xs) (Array v)  = ngEvaluate [] $ v V.! idx
+ngEvaluate ((ArrayIndex idx):xs) (Array v) = case V.length v > 0 of
+          True -> ngEvaluate [] $ v V.! idx
+          False -> Null
+
 ngEvaluate _ _ = Null
 
 
