@@ -16,7 +16,6 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Test.HUnit 
 import Data.String.QQ
 
-
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving (Show, Eq)
 
@@ -126,16 +125,16 @@ debugJSON = B.unpack . encode
 jsonToValue :: B.ByteString -> Value
 jsonToValue = fromJust . decode
 
-j = jsonToValue
-
 ------------------------------------------------------------------------
 -- Tests
 
 runTests = runTestTT tests
 
+simpleContext1 = jsonToValue [s|{"item":"apple"}|]
+
 tests = test [
-    "parseKeyExpr"    ~: [ObjectKey "item"] @=? parseKeyExpr "item"
-  , "ngEvalToString"  ~: "apple" @=? ngEvalToString (j [s|{"item":"apple"}|]) "item" 
+    "parseKeyExpr"    ~:  [ObjectKey "item"]   @=?     parseKeyExpr "item"
+  , "ngEvalToString"  ~:  "apple"              @=?     ngEvalToString simpleContext1 "item" 
              ]
 
 
