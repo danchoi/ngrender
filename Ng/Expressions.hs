@@ -139,6 +139,7 @@ tests = test [
   , "ngEvalToString"  ~:  "apple"              @=?   ngEvalToString testContext1 "item" 
   , "ngEvalToString2" ~:  "apple"              @=?   ngEvalToString testContext2 "item.name" 
   , "length method"   ~:  "3"                  @=?   ngEvalToString testContext3 "items.length" 
+  -- TODO
   , "disjunction"     ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
 
              ]
