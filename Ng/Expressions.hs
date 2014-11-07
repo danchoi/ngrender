@@ -16,6 +16,15 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Test.HUnit 
 import Data.String.QQ
 
+
+-- TODO use this expression data type instead of JSKey directly
+
+data NgExpr = JSKey JSKey 
+            | Or NgExpr NgExpr
+            | And NgExpr NgExpr
+            | Neg NgExpr 
+      deriving (Show, Eq)
+
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving (Show, Eq)
 
