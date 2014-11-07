@@ -15,6 +15,7 @@ import qualified Data.Vector as V
 import qualified Data.ByteString.Lazy.Char8 as B
 import Test.HUnit 
 import Data.String.QQ
+import Data.Functor.Identity (Identity )
 
 -- TODO handle filters someone, maybe with externally supplied shell program
 -- e.g. note.title | truncate:100
@@ -148,9 +149,10 @@ parseKeyExpr = runParse ngKeyPath
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
+ngTextChunk :: ParsecT String () Identity TextChunk
 ngTextChunk =   
-    (Interpolation <$> between (symbol "{{") (symbol "}}") (many1 anyChar))
-    <|> (PassThrough <$> manyTill anyChar (try (string "{{" >> return ()) <|> eof))
+    (Interpolation <$> (symbol "{{" *> many1 (noneOf "}") <* symbol "}}"))
+      <|> (PassThrough <$> manyTill anyChar (try (string "{{" >> return ()) <|> eof))
 
 -- for debugging
 debugJSON = B.unpack . encode 

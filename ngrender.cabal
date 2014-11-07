@@ -30,6 +30,7 @@ executable ngrender
                        parsec,
                        split,
                        scientific,
+                       transformers,
                        HUnit
 
   -- hs-source-dirs:      
