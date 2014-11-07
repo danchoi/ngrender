@@ -151,7 +151,7 @@ ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
 ngTextChunk :: ParsecT String () Identity TextChunk
 ngTextChunk =   
-    (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* symbol "}}"))
+    (Interpolation <$> (string "{{" *> many1 (noneOf "}") <* (spaces >> string "}}")))
       <|> (PassThrough <$> many1 (noneOf "{"))
 
 -- for debugging
@@ -190,7 +190,7 @@ tests = test [
   , "text chunk 1"          ~: Interpolation "test" @=? runParse ngTextChunk "{{test}}"
   , "text chunk 2"          ~: PassThrough "test"   @=? runParse ngTextChunk "test"
   , "text chunk 3"          ~: PassThrough " test"   @=? runParse ngTextChunk " test"
-  , "text chunks"           ~: [PassThrough " test ",Interpolation "test2",PassThrough "test"]
+  , "text chunks"           ~: [PassThrough " test ",Interpolation "test2",PassThrough " test"]
                                @=? runParse (many ngTextChunk) " test {{test2}} test"
 
              ]
