@@ -150,7 +150,7 @@ ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 -- ngTextChunk :: Stream s m Char => ParsecT s u m TextChunk
 ngTextChunk =   
     (Interpolation <$> (try (string "{{" *> many1 (noneOf "}") <* string "}}")))
-    <|> (PassThrough <$> many1 anyChar <* notFollowedBy (string "{{"))
+    <|> (PassThrough <$> manyTill anyChar (try (string "{{" >> return ()) <|> eof))
 
 -- for debugging
 debugJSON = B.unpack . encode 
@@ -168,23 +168,27 @@ testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
 testContext3      = jsonToValue  [s|{"items":[1,2,3]}|]
 
 tests = test [
-    "parseKeyExpr"          ~:  [ObjectKey "item"]   @=?   parseKeyExpr "item"
-  , "ngEvalToString"        ~:  "apple"              @=?   ngEvalToString testContext1 "item" 
-  , "ngEvalToString2"       ~:  "apple"              @=?   ngEvalToString testContext2 "item.name" 
-  , "length method"         ~:  "3"                  @=?   ngEvalToString testContext3 "items.length" 
-  , "parse ngexpr 1"        ~:  NgKeyPath [ObjectKey "test"]  
-                                @=? runParse ngExpr "test"
-  , "parse ngexpr 2"        ~:  (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
-                                @=? runParse ngExpr "test || test2"
-  , "parse ngexpr 3"        ~:  (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
-                                @=? runParse ngExpr "(test || test2)"
+    "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
+  , "ngEvalToString"        ~: "apple"              @=?   ngEvalToString testContext1 "item" 
+  , "ngEvalToString2"       ~: "apple"              @=?   ngEvalToString testContext2 "item.name" 
+  , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
+  , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
+                               @=? runParse ngExpr "test"
+  , "parse ngexpr 2"        ~: (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
+                               @=? runParse ngExpr "test || test2"
+  , "parse ngexpr 3"        ~: (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
+                               @=? runParse ngExpr "(test || test2)"
   , "parse ngexpr 4"        ~:  
       And (Or (NgKeyPath [ObjectKey "test1"]) (NgKeyPath [ObjectKey "test2"])) (NgKeyPath [ObjectKey "test3"])
       @=? runParse ngExpr "(test1 || test2) && test3"
-  , "parse negation"        ~:  Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
-  , "disjunction left"      ~:  "apple"              @=?   ngEvalToString testContext1 "item || another" 
-  , "disjunction right"     ~:  "10"                 @=?   ngEvalToString testContext1 "blah || another" 
-  , "disjunction in parens" ~:  "apple"              @=?   ngEvalToString testContext2 "(item.color || item.name)" 
+  , "parse negation"        ~: Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
+  , "disjunction left"      ~: "apple"              @=?   ngEvalToString testContext1 "item || another" 
+  , "disjunction right"     ~: "10"                 @=?   ngEvalToString testContext1 "blah || another" 
+  , "disjunction in parens" ~: "apple"              @=?   ngEvalToString testContext2 "(item.color || item.name)" 
+  , "text chunk 1"          ~: Interpolation "test" @=? runParse ngTextChunk "{{test}}"
+  , "text chunk 2"          ~: PassThrough " test"   @=? runParse ngTextChunk " test"
+  , "text chunks"           ~: [PassThrough " test"]
+                               @=? runParse (many ngTextChunk) " test {{test2}} test"
 
              ]
 
