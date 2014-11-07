@@ -35,12 +35,18 @@ data TextChunk = PassThrough String | Interpolation String
 symbol s = spaces *> string s <* spaces
 
 ngExpr = do
-    expr1 <- ngExprTerm
+    maybeNeg <- optionMaybe (symbol "!") 
+    expr1' <- ngExprTerm
+    let expr1 = case maybeNeg of 
+                    Just "!" -> Neg expr1'
+                    _ -> expr1'
     try (do symbol "&&"; expr2 <- ngExpr; return $ And expr1 expr2) 
      <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
      <|> return expr1
 
-ngExprTerm = (char '(' *> ngExpr <* char ')') <|> (NgKeyPath <$> ngKeyPath)
+ngExprTerm = (char '(' *> ngExpr <* char ')') <|> ngKeyPath'
+
+ngKeyPath' = NgKeyPath <$> ngKeyPath 
 
 ngKeyPath = do
     ks <- sepBy1 ngVarName (char '.') 
@@ -168,10 +174,12 @@ tests = test [
                                 @=? runParse ngExpr "test || test2"
   , "parse ngexpr 3"        ~:  (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
                                 @=? runParse ngExpr "(test || test2)"
-  -- TODO, fails
   , "parse ngexpr 4"        ~:  
       And (Or (NgKeyPath [ObjectKey "test1"]) (NgKeyPath [ObjectKey "test2"])) (NgKeyPath [ObjectKey "test3"])
       @=? runParse ngExpr "(test1 || test2) && test3"
+  , "parse negation"        ~:  Neg (NgKeyPath [ObjectKey "test"]) @=? runParse ngExpr "!test"
+
+
   {-
   , "disjunction"           ~:  "10"                 @=?   ngEvalToString testContext1 "item.color || item.price" 
   , "disjunction in parens" ~:  "10"                 @=?   ngEvalToString testContext1 "(item.color || item.price)" 
