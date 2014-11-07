@@ -50,22 +50,11 @@ ngExprTerm = (char '(' *> ngExpr <* char ')') <|> ngKeyPath'
 ngKeyPath' = NgKeyPath <$> ngKeyPath 
 
 ngKeyPath = do
-    ks <- sepBy1 (toJSKey . T.pack <$> ngVarName) (char '.') 
-    idx' <- optionMaybe ngArrayIndex 
-    case idx' of
-      Just idx -> return $ ks ++ [idx]
-      Nothing -> return ks
+    ks <- sepBy1 ((ArrayIndex . read <$> many1 digit <* char ']') <|> (toJSKey . T.pack <$> ngVarName))
+                 (char '.' <|> char '[') 
+    return ks 
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
-
-ngArrayIndex :: ParsecT String () Identity JSKey
-ngArrayIndex = ArrayIndex <$> (
-        do 
-            char '[' 
-            x <- many1 digit
-            char ']'
-            return . read $ x
-        )
 
 
 ------------------------------------------------------------------------
@@ -127,9 +116,8 @@ ngEvaluate ((ObjectKey key):(Method "length"):[]) (Object s) =
         _ -> Null
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v) = case V.length v > 0 of
-          True -> ngEvaluate [] $ v V.! idx
+          True -> ngEvaluate xs (v V.! idx)
           False -> Null
-
 ngEvaluate _ _ = Null
 
 
@@ -205,7 +193,7 @@ tests = test [
     "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
   , "ngEvalToString"        ~: "apple"              @=?   ngEvalToString testContext1 "item" 
   , "ngEvalToString2"       ~: "apple"              @=?   ngEvalToString testContext2 "item.name" 
-  , "parse array index"     ~: ArrayIndex 2         @=?   runParse ngArrayIndex "[2]"
+  , "array keypath"         ~: [ObjectKey "items",ArrayIndex 1]       @=?   parseKeyExpr "items[1]" 
   , "array index"           ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
   , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
   , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
