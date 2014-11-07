@@ -8,9 +8,15 @@ import Data.Maybe
 
 main = do
     [file] <- getArgs
-    raw <- B.getContents
-    let json = (decode raw :: Maybe Value)
-    case json of 
-      (Just json') -> processTemplate file json'
-      _ -> error $ "error parsing json: " ++ B.unpack raw
-     
+    if file == "-t"
+    then do
+      counts <- runTests 
+      print counts
+      return ()
+    else do
+      raw <- B.getContents
+      let json = (decode raw :: Maybe Value)
+      case json of 
+        (Just json') -> processTemplate file json' >> return ()
+        _ -> error $ "error parsing json: " ++ B.unpack raw
+       
