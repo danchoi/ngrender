@@ -19,6 +19,8 @@ import Data.Functor.Identity (Identity )
 
 -- TODO handle filters someone, maybe with externally supplied shell program
 -- e.g. note.title | truncate:100
+data FilteredNgExpr = FilteredNgExpr NgExpr (Maybe Filter)
+  deriving Show
 
 data NgExpr = NgKeyPath [JSKey]
             | Or NgExpr NgExpr
