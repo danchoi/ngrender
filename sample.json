@@ -1,0 +1,69 @@
+{
+  "wizard": {
+    "name": "Gandalf"
+  },
+  "party": [
+    {
+      "name": "Thorin",
+      "species": "dwarf"
+    },
+    {
+      "name": "Fili",
+      "species": "dwarf"
+    },
+    {
+      "name": "Kili",
+      "species": "dwarf",
+      "injuries": 13
+    },
+    {
+      "name": "Balin",
+      "species": "dwarf",
+      "injuries": 12
+    },
+    {
+      "name": "Dwalin",
+      "species": "dwarf"
+    },
+    {
+      "name": "Olin",
+      "species": "dwarf"
+    },
+    {
+      "name": "Gloin",
+      "species": "dwarf",
+      "injuries": 10
+    },
+    {
+      "name": "Ori",
+      "species": "dwarf"
+    },
+    {
+      "name": "Dori",
+      "species": "dwarf",
+      "injuries": 8
+    },
+    {
+      "name": "Nori",
+      "species": "dwarf"
+    },
+    {
+      "name": "Bifur",
+      "species": "dwarf",
+      "injuries": 13
+    },
+    {
+      "name": "Bofur",
+      "species": "dwarf",
+      "injuries": 23
+    },
+    {
+      "name": "Bombur",
+      "species": "dwarf"
+    },
+    {
+      "name": "Bilbo",
+      "species": "hobbit"
+    }
+  ]
+}
