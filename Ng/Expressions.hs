@@ -52,7 +52,7 @@ ngExpr = do
      <|> try (do op <- comparisonOp; expr2 <- ngExpr; return $ Compare op expr1 expr2) 
      <|> return expr1
 
-comparisonOp = choice $ map (try . symbol) [">", "<", "==", ">=", "<=", "!="]
+comparisonOp = choice $ map (try . symbol) [">=", "<=", "!=", ">", "<", "=="]
 
 ngExprTerm = (char '(' *> ngExpr <* char ')') <|>  ngLiteral <|> ngKeyPath
 
@@ -251,10 +251,14 @@ tests = test [
   , "disjunction right"     ~: "10"                  @=? ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"               @=? ngEvalToString testContext2 "(item.color || item.name)" 
   , "length"                ~: Number 3                   @=? ngEval ["items","length"] testContext3 
-  , "compare 1"             ~: Bool False
+  , "compare length == "   ~: Bool False
                                @=? ngExprEval (runParse ngExpr "items.length == 2") testContext3
-  , "compare 2"             ~: Bool True
+  , "compare length == 2"      ~: Bool True
                                @=? ngExprEval (runParse ngExpr "items.length == 3") testContext3
+  , "compare length >"      ~: Bool True
+                               @=? ngExprEval (runParse ngExpr "items.length > 1") testContext3
+  , "compare length >="     ~: Bool True
+                               @=? ngExprEval (runParse ngExpr "items.length >= 1") testContext3
   , "compare to string"     ~: "true"
                                @=? ngEvalToString testContext1 "item == 'apple'"
   , "text chunk 1"          ~: Interpolation "test"  @=? runParse interpolationChunk "{{test}}"
