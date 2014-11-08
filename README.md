@@ -171,14 +171,13 @@ to generate this HTML:
 
 ## ng layouts
 
-`ngrender` can merge page templates into layout templates in a preprocessing
-step like so:
+`ngrender` can merge page templates into layout templates like so:
 
 ```
 ngrender layout.html page.html < items.json
 ```
 
-If layout.html contains a `<div ng-view></div>`, the content from items.html
+layout.html must contain a `<div ng-view></div>`.  The content from page.html
 will be nested in it.
 
 
