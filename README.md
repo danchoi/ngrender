@@ -13,7 +13,7 @@ Server-side AngularJS templating may useful in some situations, such as
   This has terrible performance in the web browser and in some cases can't even happen. You
   want a way to render the AngularJS templates with more horsepower and speed
   than inside the browser's pokey JavaScript engine. 
-* You like AngularJS's templating language and want to use for more than just in the web browser JavaScript MVC layer.
+* You like AngularJS's templating language and want to use it for everything dynamic HTML.
 
 ## Prerequisites
 
