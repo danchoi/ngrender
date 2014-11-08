@@ -169,8 +169,11 @@ to generate this HTML:
 
 ## ng layouts
 
+`ngrender` can merge page templates into layout templates in a preprocessing
+step like so:
+
 ```
-.cabal-sanbox/bin/ngrender layout.html items.html < items.json
+ngrender layout.html page.html < items.json
 ```
 
 If layout.html contains a `<div ng-view></div>`, the content from items.html
