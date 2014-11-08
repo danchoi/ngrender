@@ -64,9 +64,6 @@ into
 
 ## TODO
 
-Lots including
-
 * filters
 * ng-model
 * ng-class
-* ng
