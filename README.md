@@ -1,6 +1,6 @@
 # ngrender
 
-Pure Haskell rendering of AngularJS templates.
+Pure server-side rendering of AngularJS templates.
 
 This project is alpha and not production ready.
 
