@@ -17,6 +17,8 @@ import Test.HUnit
 import Data.String.QQ
 import Data.Functor.Identity (Identity )
 
+-- see doc for AngularJS expressions https://docs.angularjs.org/guide/expression
+
 data FilteredNgExpr = FilteredNgExpr NgExpr (Maybe Filter)
   deriving Show
 
