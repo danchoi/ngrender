@@ -36,6 +36,24 @@ processTemplate file context = runX (
     writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
     )
 
+processTemplateWithLayout layoutFile file context = runX (
+    (
+      (\contentXml -> 
+          readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] layoutFile
+          >>> 
+          processTopDown (replaceChildren (constA contentXml) `when` (isElem >>> hasAttr "ng-view"))
+      )
+      $< (readDocument [withValidate no, withParseHTML yes, withInputEncoding utf8] file)
+    )
+    >>> 
+    setTraceLevel 0
+    >>>
+    process context
+    >>>
+    writeDocument [withIndent yes, withOutputHTML, withXmlPi no] "-"
+    )
+
+
 process :: Value -> IOSArrow XmlTree XmlTree
 process context = 
     normalNgProcess context
