@@ -200,7 +200,7 @@ This list is not exhaustive.
 
 ## Author
 
-Daniel Choi (danchoi on github)
+Daniel Choi ([danchoi](https://github.com/danchoi/) on github)
 
 
 
