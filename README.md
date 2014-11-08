@@ -56,13 +56,15 @@ into
 
 ## Done
 
-* Basic rendering of {{expressions}} inside ng-repeat loop
+* ng-repeat
+* ng-hide, ng-show, ng-bind, ng-html-bind
+* {{ }} expressions
+* Angular expressions, sans filters
 
 ## TODO
 
 Lots including
 
-* Number output needs to be fixed for integers
-* ng-hide, ng-show
+* filters
 * ng-model
 
