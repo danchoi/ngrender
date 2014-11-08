@@ -174,20 +174,7 @@ ngRepeatContext c@(Object context) nrp@(NgRepeatKeys iterVarName keyPathToArray)
         -- merge iteration object with general context
 ngRepeatContext _ _ = none
 
-
-
 ------------------------------------------------------------------------
-
-{- idea: pattern matching 
-
-processXml :: Value -> NgDirective -> a XmlTree XmlTree
-processXml v (NgRepeat x x) 
-processXml v (NgBind  x x) 
-processXml v (NgBindHtmlUnsafe  x x) 
-processXml v Default 
-
--}
-
 
 hasNgAttr :: ArrowXml a => String -> a XmlTree XmlTree
 hasNgAttr attrName = isElem >>> hasAttr attrName

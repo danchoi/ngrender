@@ -52,8 +52,6 @@ into
 
 ```
 
-
-
 ## Done
 
 * ng-repeat
