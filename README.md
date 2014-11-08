@@ -36,17 +36,17 @@ into
   <li class="myclass">
     Hello one
     <br/> 
-    Votes: 1.0
+    Votes: 1
   </li>
   <li class="myclass">
     Hello two
     <br/> 
-    Votes: 2.0
+    Votes: 2
   </li>
   <li class="myclass">
     Hello three
     <br/> 
-    Votes: 3.0
+    Votes: 3
   </li>
 </ul>
 
