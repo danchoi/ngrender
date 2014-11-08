@@ -132,12 +132,15 @@ flatten name = processAttrl
 
 ngClass context = 
     (
-      ((\classNames -> 
-          (processAttrl (changeAttrValue (const classNames)))
-          -- >>> changeAttrName (const $ mkName "class") `when` (isElem >>> hasAttr "ng-class")  
-              -- TODO correct way would be to merge data with any existing class attribute
+      ((\newClassNames -> 
+        addAttr "class" newClassNames `when` neg (hasName "class")
+        `orElse`
+        processAttrl (
+            changeAttrValue (\old -> mconcat [old, " ", newClassNames]) `when` hasName "class"
+          )
+              -- addAttr "class" classNames
       ) $< (getAttrValue "ng-class" >>> arr (ngEvalToString context))
-      ) -- >>> removeAttr "ng-class"
+      ) >>> removeAttr "ng-class"
     ) `when` hasNgAttr "ng-class"
      
 ------------------------------------------------------------------------

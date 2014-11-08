@@ -3,6 +3,7 @@ module Ng.Expressions where
 import Text.Parsec hiding (many, (<|>))
 import Data.Maybe (fromJust, fromMaybe)
 import Data.Monoid
+import Data.List (intersperse)
 import Data.List.Split
 import Data.Scientific 
 import Data.Aeson
@@ -148,10 +149,11 @@ ngExprEval (Neg x) v        =
           _ -> Bool False
 ngExprEval (NgMap ngmap) v =
       let xs :: [(String, NgExpr)] = M.toList ngmap
-          trueKeys = [String . T.pack $ k | (k,expr) <- xs, (valueToBool $ ngExprEval expr v)]
+          trueKeys = [k | (k,expr) <- xs, (valueToBool $ ngExprEval expr v)]
+      -- return all true keys concatenated interspersed with spaces
       in case trueKeys of
-            x:_ -> x
             [] -> Null
+            xs -> String $ mconcat $ intersperse " " $ map T.pack xs
 ngExprEval (Compare op x y) v      = 
       let vx = comparableValue $ ngExprEval x v
           vy = comparableValue $ ngExprEval y v
@@ -261,6 +263,7 @@ testContext1      = jsonToValue  [s|{"item":"apple","another":10}|]
 testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
 testContext3      = jsonToValue  [s|{"items":[1,2,3]}|]
 testContext4      = jsonToValue  [s|{"item":{"active":false,"canceled":true}}|]
+testContext5      = jsonToValue  [s|{"person":{"species":"hobbit"}}|]
 
 tests = test [
     "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
@@ -270,6 +273,9 @@ tests = test [
   , "array index"           ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
   , "parse ng map"          ~: NgMap (M.fromList [("testKey",NgKeyPath [ObjectKey "item",ObjectKey "name"])])
                                @=? runParse ngExpr "{testKey: item.name}"
+  , "parse ng map 2"        ~: NgMap (M.fromList [("dwarf",Compare "==" (NgKeyPath [ObjectKey "person",ObjectKey "species"]) (NgLiteral (String "dwarf"))),("hobbit",Compare "==" (NgKeyPath [ObjectKey "person",ObjectKey "species"]) (NgLiteral (String "hobbit")))])
+                               @=? runParse ngExpr "{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit'}"
+
   , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
   , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
                                @=? runParse ngExpr "test"
@@ -294,9 +300,9 @@ tests = test [
   , "disjunction right"     ~: "10"                  @=? ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"               @=? ngEvalToString testContext2 "(item.color || item.name)" 
   , "length"                ~: Number 3              @=? ngEval ["items","length"] testContext3 
-  , "ngmap expression"      ~: "canceled"            @=? ngEvalToString testContext4 "{active: item.active, canceled:item.canceled}"
-  , "compare length == "   ~: Bool False
-                               @=? ngExprEval (runParse ngExpr "items.length == 2") testContext3
+  , "ngmap eval 1"          ~: "canceled"            @=? ngEvalToString testContext4 "{active: item.active, canceled:item.canceled}"
+  , "ngmap eval 2"          ~: "hobbit"              @=? ngEvalToString testContext5 "{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit'}"
+
   , "compare length == again"      ~: Bool True
                                @=? ngExprEval (runParse ngExpr "items.length == 3") testContext3
   , "compare length != "      ~: Bool False
