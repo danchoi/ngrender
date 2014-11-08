@@ -17,8 +17,6 @@ import Test.HUnit
 import Data.String.QQ
 import Data.Functor.Identity (Identity )
 
--- TODO handle filters someone, maybe with externally supplied shell program
--- e.g. note.title | truncate:100
 data FilteredNgExpr = FilteredNgExpr NgExpr (Maybe Filter)
   deriving Show
 
@@ -30,7 +28,12 @@ data NgExpr = NgKeyPath [JSKey]
             | NgLiteral Value
       deriving (Show, Eq)
 
-data Filter = Filter String deriving Show
+-- See https://docs.angularjs.org/api/ng/filter/filter
+-- TODO support filters
+data Filter = Filter FilterName FilterArg deriving Show
+
+type FilterName = String
+type FilterArg = String
 
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving (Show, Eq)
