@@ -37,6 +37,7 @@ data TextChunk = PassThrough String | Interpolation String
 data ComparableValue = ComparableNumberValue Scientific
                      | ComparableStringValue Text
                      | ComparableBoolValue Bool
+                     | ComparableNullValue 
     deriving (Ord, Eq, Show)
 
 symbol s = spaces *> string s <* spaces
@@ -132,6 +133,7 @@ comparableValue :: Value -> ComparableValue
 comparableValue (Number x) = ComparableNumberValue x
 comparableValue (String x) = ComparableStringValue x
 comparableValue (Bool x) = ComparableBoolValue x
+comparableValue Null = ComparableNullValue 
 comparableValue x = error $ "can't make comparable value for " ++ show x
 
 
