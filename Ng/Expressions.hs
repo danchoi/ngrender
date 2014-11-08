@@ -30,8 +30,7 @@ data NgExpr = NgKeyPath [JSKey]
             | NgLiteral Value
       deriving (Show, Eq)
 
-data Filter = Filter
-    deriving Show
+data Filter = Filter String deriving Show
 
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving (Show, Eq)
