@@ -52,6 +52,16 @@ into
 
 ```
 
+## ng layouts
+
+```
+.cabal-sanbox/bin/ngrender layout.html items.html < items.json
+```
+
+If layout.html contains a `<div ng-view></div>`, the content from items.html
+will be nested in it.
+
+
 ## Done
 
 * ng-repeat
