@@ -10,9 +10,9 @@ Server-side AngularJS templating is useful in some situations.
 
 E.g.,
 
-1. Reusing AngularJS web templates for HTML email generation;
+1. Reusing AngularJS web templates for HTML email generation
 2. Rendering a very large array of JSON objects in an AngularJS ng-repeat loop 
-   has bad performance and in cases no performance at all in a web browser -- not so using `ngrender`;
+   has bad performance in a web browser and in some cases can't even happen
 3. Because you like AngularJS's templating language 
 
 ## Prerequisites
