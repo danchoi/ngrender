@@ -20,8 +20,8 @@ import qualified Data.Map.Strict as M
 
 -- see doc for AngularJS expressions https://docs.angularjs.org/guide/expression
 
-data FilteredNgExpr = FilteredNgExpr NgExpr (Maybe Filter)
-  deriving Show
+data NgExprTopLevel = NgExprTopLevel NgExpr (Maybe NgFilter)
+    deriving (Show, Eq)
 
 data NgExpr = NgKeyPath [JSKey]
             | Or NgExpr NgExpr
@@ -38,7 +38,7 @@ data NgExpr = NgKeyPath [JSKey]
 
 -- See https://docs.angularjs.org/api/ng/filter/filter
 -- IN PROGRESS
-data Filter = FilterByValue Value | Filter FilterName Value deriving Show
+data NgFilter = NgFilter FilterName (Maybe NgExpr) deriving (Show, Eq) 
 type FilterName = String
 type FilterArg = String
 
@@ -56,6 +56,8 @@ data ComparableValue = ComparableNumberValue Scientific
 
 symbol s = spaces *> string s <* spaces
 
+ngExprTopLevel = NgExprTopLevel <$> ngExpr <*> (optionMaybe $ spaces >> ngFilter)
+
 ngExpr = do
     ngMap <|> (do
       maybeNeg <- optionMaybe (symbol "!") 
@@ -67,6 +69,12 @@ ngExpr = do
        <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
        <|> try (do op <- comparisonOp; expr2 <- ngExpr; return $ Compare op expr1 expr2) 
        <|> return expr1)
+
+ngFilter = do
+      char '|'  >> spaces
+      name <- ngVarName
+      arg <- optionMaybe (char ':' >> spaces >> ngExprTerm)
+      return $ NgFilter name arg
 
 ngMap = do
     char '{' >> spaces
@@ -279,6 +287,9 @@ tests = test [
   , "parse comparison with literal" ~: 
                                Compare "==" (NgKeyPath [ObjectKey "test"]) (NgLiteral (Number 1))
                                @=? runParse ngExpr "test == 1"
+  , "parse top level ng expr" ~: 
+                               NgExprTopLevel (NgKeyPath [ObjectKey "item",ObjectKey "price"]) (Just (NgFilter "number" (Just (NgLiteral (Number 2.0)))))
+                               @=? runParse ngExprTopLevel "item.price | number:2"
   , "disjunction left"      ~: "apple"               @=? ngEvalToString testContext1 "item || another" 
   , "disjunction right"     ~: "10"                  @=? ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"               @=? ngEvalToString testContext2 "(item.color || item.name)" 
