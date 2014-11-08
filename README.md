@@ -2,7 +2,7 @@
 
 Pure server-side rendering of AngularJS templates.
 
-This project is alpha and not guaranteed to work with your AngularJS templates. YMMV.
+This project is beta and not guaranteed to work with your AngularJS templates. YMMV.
 
 ## Use cases
 
