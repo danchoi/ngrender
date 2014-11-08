@@ -59,6 +59,7 @@ into
 * ng-repeat
 * ng-hide, ng-show, ng-bind, ng-html-bind
 * ng-href, ng-src
+* ng-class
 * {{ }} expressions
 * Angular expressions, sans filters
 
@@ -66,4 +67,3 @@ into
 
 * filters
 * ng-model
-* ng-class

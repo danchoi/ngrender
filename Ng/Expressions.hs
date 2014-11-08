@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ExistentialQuantification, ScopedTypeVariables #-}
 module Ng.Expressions where
 import Text.Parsec hiding (many, (<|>))
 import Data.Maybe (fromJust, fromMaybe)
@@ -16,6 +16,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Test.HUnit 
 import Data.String.QQ
 import Data.Functor.Identity (Identity )
+import qualified Data.Map.Strict as M
 
 -- see doc for AngularJS expressions https://docs.angularjs.org/guide/expression
 
@@ -27,6 +28,11 @@ data NgExpr = NgKeyPath [JSKey]
             | And NgExpr NgExpr
             | Neg NgExpr 
             | Compare String NgExpr NgExpr
+            -- map is used by ngClass: https://docs.angularjs.org/api/ng/directive/ngClass
+            -- A map of class names to boolean values. In the case of a map,
+            -- the names of the properties whose values are truthy will be added
+            -- as css classes to the element.
+            | NgMap (M.Map String NgExpr)
             | NgLiteral Value
       deriving (Show, Eq)
 
@@ -52,15 +58,22 @@ data ComparableValue = ComparableNumberValue Scientific
 symbol s = spaces *> string s <* spaces
 
 ngExpr = do
-    maybeNeg <- optionMaybe (symbol "!") 
-    expr1' <- ngExprTerm
-    let expr1 = case maybeNeg of 
-                    Just "!" -> Neg expr1'
-                    _ -> expr1'
-    try (do symbol "&&"; expr2 <- ngExpr; return $ And expr1 expr2) 
-     <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
-     <|> try (do op <- comparisonOp; expr2 <- ngExpr; return $ Compare op expr1 expr2) 
-     <|> return expr1
+    ngMap <|> (do
+      maybeNeg <- optionMaybe (symbol "!") 
+      expr1' <- ngExprTerm
+      let expr1 = case maybeNeg of 
+                      Just "!" -> Neg expr1'
+                      _ -> expr1'
+      try (do symbol "&&"; expr2 <- ngExpr; return $ And expr1 expr2) 
+       <|> try (do symbol "||"; expr2 <- ngExpr; return $ Or expr1 expr2) 
+       <|> try (do op <- comparisonOp; expr2 <- ngExpr; return $ Compare op expr1 expr2) 
+       <|> return expr1)
+
+ngMap = do
+    char '{' >> spaces
+    pairs :: [(String, NgExpr)] <- sepBy1 ((,) <$> ngVarName <*> (char ':' >> spaces >> ngExpr <* spaces)) (char ',' >> spaces)
+    spaces >> char '}' >> spaces
+    return $ NgMap $ M.fromList pairs
 
 comparisonOp = choice $ map (try . symbol) [">=", "<=", "!=", ">", "<", "=="]
 
@@ -126,6 +139,12 @@ ngExprEval (Neg x) v        =
           Bool False -> Bool True
           String "" -> Bool True   -- ? is this right?
           _ -> Bool False
+ngExprEval (NgMap ngmap) v =
+      let xs :: [(String, NgExpr)] = M.toList ngmap
+          trueKeys = [String . T.pack $ k | (k,expr) <- xs, (valueToBool $ ngExprEval expr v)]
+      in case trueKeys of
+            x:_ -> x
+            [] -> Null
 ngExprEval (Compare op x y) v      = 
       let vx = comparableValue $ ngExprEval x v
           vy = comparableValue $ ngExprEval y v
@@ -234,6 +253,7 @@ runTests = runTestTT tests
 testContext1      = jsonToValue  [s|{"item":"apple","another":10}|]
 testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
 testContext3      = jsonToValue  [s|{"items":[1,2,3]}|]
+testContext4      = jsonToValue  [s|{"item":{"active":false,"canceled":true}}|]
 
 tests = test [
     "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
@@ -241,6 +261,8 @@ tests = test [
   , "ngEvalToString2"       ~: "apple"              @=?   ngEvalToString testContext2 "item.name" 
   , "array keypath"         ~: [ObjectKey "items",ArrayIndex 1]       @=?   parseKeyExpr "items[1]" 
   , "array index"           ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
+  , "parse ng map"          ~: NgMap (M.fromList [("testKey",NgKeyPath [ObjectKey "item",ObjectKey "name"])])
+                               @=? runParse ngExpr "{testKey: item.name}"
   , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
   , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
                                @=? runParse ngExpr "test"
@@ -261,7 +283,8 @@ tests = test [
   , "disjunction left"      ~: "apple"               @=? ngEvalToString testContext1 "item || another" 
   , "disjunction right"     ~: "10"                  @=? ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"               @=? ngEvalToString testContext2 "(item.color || item.name)" 
-  , "length"                ~: Number 3                   @=? ngEval ["items","length"] testContext3 
+  , "length"                ~: Number 3              @=? ngEval ["items","length"] testContext3 
+  , "ngmap expression"      ~: "canceled"            @=? ngEvalToString testContext4 "{active: item.active, canceled:item.canceled}"
   , "compare length == "   ~: Bool False
                                @=? ngExprEval (runParse ngExpr "items.length == 2") testContext3
   , "compare length == again"      ~: Bool True

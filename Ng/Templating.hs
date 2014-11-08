@@ -50,6 +50,7 @@ process context =
 normalNgProcess context = processTopDown (
       ngRepeat context `when` hasNgAttr "ng-repeat"
       >>> interpolateValues context 
+      >>> ngClass context
       >>> ngShow context 
       >>> ngHide context  
       >>> ngBind context
@@ -105,14 +106,22 @@ ngHide context =
       ) >>> removeAttr "ng-hide"
     ) `when` hasNgAttr "ng-hide"
 
-------------------------------------------------------------------------
-
 flatten :: ArrowXml a => String -> a XmlTree XmlTree
 flatten name = processAttrl 
       (changeAttrName (const (mkName $ replacement name)))
       `when` (isElem >>> hasAttr name)
     where replacement = drop 3
 
+ngClass context = 
+    (
+      ((\classNames -> 
+          (processAttrl (changeAttrValue (const classNames)))
+          -- >>> changeAttrName (const $ mkName "class") `when` (isElem >>> hasAttr "ng-class")  
+              -- TODO correct way would be to merge data with any existing class attribute
+      ) $< (getAttrValue "ng-class" >>> arr (ngEvalToString context))
+      ) -- >>> removeAttr "ng-class"
+    ) `when` hasNgAttr "ng-class"
+     
 ------------------------------------------------------------------------
 -- ngRepeat
 
