@@ -23,7 +23,7 @@ import Ng.Expressions
 newtype NgDirective a = NgDirective a
     deriving Show
 
-data NgRepeatKeys = NgRepeatKeys Text [Text]
+data NgRepeatContext = NgRepeatContext Text Value
     deriving Show
 
 processTemplate file context = runX (
@@ -128,24 +128,22 @@ ngClass context =
 ngRepeat :: Value       -- ^ the global context JSON Value
          -> IOSArrow XmlTree XmlTree
 ngRepeat context = 
-    (ngRepeatContext context $< ngRepeatKeys) 
+    (ngRepeatContext context $< ngRepeatKeys context) 
 
-ngRepeatKeys :: IOSArrow XmlTree NgRepeatKeys
-ngRepeatKeys = 
+ngRepeatKeys :: Value -> IOSArrow XmlTree NgRepeatContext
+ngRepeatKeys outerContext = 
       getAttrValue "ng-repeat" 
       >>> traceValue 2 (show)
       >>> arr parseNgRepeatExpr
-  where parseNgRepeatExpr :: String -> NgRepeatKeys
+  where parseNgRepeatExpr :: String -> NgRepeatContext
         parseNgRepeatExpr = runParse $ do
           iterVarName <- ngVarName
           spaces >> string "in" >> spaces
-          keyPathToArray <- sepBy1 ngVarName (char '.')
-          -- TODO deal with any appended ng-filters
-          return $ NgRepeatKeys (T.pack iterVarName) (map T.pack keyPathToArray)
+          arrayValue <- flip ngExprEval outerContext <$> ngExpr
+          return $ NgRepeatContext (T.pack iterVarName) arrayValue
 
-
-ngRepeatContext :: Value -> NgRepeatKeys -> IOSArrow XmlTree XmlTree
-ngRepeatContext c@(Object context) nrp@(NgRepeatKeys iterVarName keyPathToArray) = 
+ngRepeatContext :: Value -> NgRepeatContext -> IOSArrow XmlTree XmlTree
+ngRepeatContext c@(Object context) nrp@(NgRepeatContext iterVarName repeatContext) = 
     (\iterVar ->
       traceMsg 2 ("* ngRepeatContext with ngRepeatKeys " ++ show nrp) 
       >>>
@@ -160,9 +158,9 @@ ngRepeatContext c@(Object context) nrp@(NgRepeatKeys iterVarName keyPathToArray)
 
         )
     ) $< (
-            traceMsg 2 ("constL getList key " ++ show keyPathToArray ++ " for context " ++ debugJSON c)
+            traceMsg 2 ("repeat context " ++ debugJSON repeatContext ++ " for context " ++ debugJSON c)
             >>>
-            constL (getList $ ngEval keyPathToArray c)
+            constL (getList $ repeatContext)
             >>> traceValue 2 show
          )
   -- THIS IS THE BUG. k can be a key path

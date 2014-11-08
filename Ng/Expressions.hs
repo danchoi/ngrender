@@ -37,9 +37,8 @@ data NgExpr = NgKeyPath [JSKey]
       deriving (Show, Eq)
 
 -- See https://docs.angularjs.org/api/ng/filter/filter
--- TODO support filters
-data Filter = Filter FilterName FilterArg deriving Show
-
+-- IN PROGRESS
+data Filter = FilterByValue Value | Filter FilterName Value deriving Show
 type FilterName = String
 type FilterArg = String
 
