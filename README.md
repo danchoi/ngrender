@@ -28,10 +28,10 @@ cabal install
 ## Usage
 
 ```
-ngrender sample.html < sample.json
+ngrender sample.nghtml < sample.json
 ```
 
-injects this JSON
+injects this JSON (sample.json)
 
 ```json
 {
@@ -105,14 +105,15 @@ injects this JSON
 }
 ```
 
-into this template
+into this template (sample.nghtml)
 
 ```html
 <div>Wizard {{wizard.name}}</div>
 <ul>
   <li ng-repeat="person in party" 
       ng-hide="person.injuries && person.injuries > 9"
-      ng-class="{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit', injured: person.injuries}">
+      ng-class="{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit', 
+                injured: person.injuries}">
     <p>Name: <strong ng-bind="person.name"></strong></p>
     <p>Species: <em>{{person.species}}</em></p>
     <p ng-show="person.injuries">Injuries: {{person.injuries}}</p>

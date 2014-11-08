@@ -2,7 +2,8 @@
 <ul>
   <li ng-repeat="person in party" 
       ng-hide="person.injuries && person.injuries > 9"
-      ng-class="{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit', injured: person.injuries}">
+      ng-class="{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit', 
+                 injured: person.injuries}">
     <p>Name: <strong ng-bind="person.name"></strong></p>
     <p>Species: <em>{{person.species}}</em></p>
     <p ng-show="person.injuries">Injuries: {{person.injuries}}</p>
