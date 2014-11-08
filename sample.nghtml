@@ -1,6 +1,7 @@
 <div>Wizard {{wizard.name}}</div>
 <ul>
-  <li class="party" ng-repeat="person in party" ng-hide="person.injuries && person.injuries > 9">
+  <li class="party" ng-repeat="person in party" 
+      ng-hide="person.injuries && person.injuries > 9">
     <p>Name: <strong ng-bind="person.name"></strong></p>
     <p>Species: <em>{{person.species}}</em></p>
     <p ng-show="person.injuries">Injuries: {{person.injuries}}</p>
