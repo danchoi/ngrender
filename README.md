@@ -110,8 +110,9 @@ into this template
 ```html
 <div>Wizard {{wizard.name}}</div>
 <ul>
-  <li class="party" ng-repeat="person in party" 
-      ng-hide="person.injuries && person.injuries > 9">
+  <li ng-repeat="person in party" 
+      ng-hide="person.injuries && person.injuries > 9"
+      ng-class="{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit', injured: person.injuries}">
     <p>Name: <strong ng-bind="person.name"></strong></p>
     <p>Species: <em>{{person.species}}</em></p>
     <p ng-show="person.injuries">Injuries: {{person.injuries}}</p>
@@ -122,64 +123,46 @@ into this template
 to generate this HTML:
 
 ```html
-<ul>
-  <li class="myclass">
-    Hello one
-    <br/> 
-    Votes: 1
-  </li>
-  <li class="myclass">
-    Hello two
-    <br/> 
-    Votes: 2
-  </li>
-  <li class="myclass">
-    Hello three
-    <br/> 
-    Votes: 3
-  </li>
-</ul>
 <div>Wizard Gandalf</div>
 <ul>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Thorin</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Fili</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Dwalin</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Olin</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Ori</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf injured">
     <p>Name: <strong>Dori</strong></p>
     <p>Species: <em>dwarf</em></p>
     <p>Injuries: 8</p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Nori</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="dwarf">
     <p>Name: <strong>Bombur</strong></p>
     <p>Species: <em>dwarf</em></p>
   </li>
-  <li class="party">
+  <li class="hobbit">
     <p>Name: <strong>Bilbo</strong></p>
     <p>Species: <em>hobbit</em></p>
   </li>
 </ul>
-
 
 ```
 
