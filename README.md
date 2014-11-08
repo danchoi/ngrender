@@ -25,7 +25,7 @@ E.g.,
 cabal install
 ```
 
-## Test
+## Usage
 
 ```
 ngrender sample.html < sample.json
