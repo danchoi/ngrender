@@ -30,6 +30,9 @@ data NgExpr = NgKeyPath [JSKey]
             | NgLiteral Value
       deriving (Show, Eq)
 
+data Filter = Filter
+    deriving Show
+
 data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
     deriving (Show, Eq)
 
@@ -257,8 +260,10 @@ tests = test [
   , "length"                ~: Number 3                   @=? ngEval ["items","length"] testContext3 
   , "compare length == "   ~: Bool False
                                @=? ngExprEval (runParse ngExpr "items.length == 2") testContext3
-  , "compare length == 2"      ~: Bool True
+  , "compare length == again"      ~: Bool True
                                @=? ngExprEval (runParse ngExpr "items.length == 3") testContext3
+  , "compare length != "      ~: Bool False
+                               @=? ngExprEval (runParse ngExpr "items.length != 3") testContext3
   , "compare length >"      ~: Bool True
                                @=? ngExprEval (runParse ngExpr "items.length > 1") testContext3
   , "compare length >="     ~: Bool True
