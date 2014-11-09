@@ -23,9 +23,13 @@ Server-side AngularJS templating may useful in some situations, such as
 
 ## Setup
 
+From the project directory:
+
 ```
 cabal install
 ```
+
+This will likely install the `ngrender` executable in ~/.cabal/bin, which should be on your PATH.
 
 ## Usage
 
