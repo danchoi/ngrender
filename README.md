@@ -192,7 +192,7 @@ will be nested in it.
 
 ## Not yet supported
 
-* AngularJS filter expressions, e.g. `item.price | number:2`
+* AngularJS filter expressions, e.g. `item.price | number:2`. Currently filters are ignored and the output happens as if the filters aren't there
 * ng-model
 * custom directives
 
