@@ -4,7 +4,7 @@ Pure server-side rendering of AngularJS templates.
 
 This project is beta and not guaranteed to work with your AngularJS templates. YMMV.
 
-## Use cases
+## Some use cases
 
 Server-side AngularJS templating may useful in some situations, such as
 
