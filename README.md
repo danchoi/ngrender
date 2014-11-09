@@ -198,6 +198,13 @@ will be nested in it.
 
 This list is not exhaustive.
 
+## How this interacts with AngularJS's client-side library
+
+ngrender processes the ng-directives it knows how to deal with and strips them
+from the HTML output.  Therefore you shouldn't expect the generated HTML to be
+rebound and updated by AngularJS controllers loaded into the page by script
+tags.
+
 
 ## Author
 
