@@ -8,7 +8,7 @@ This project is beta and not guaranteed to work with your AngularJS templates. Y
 
 Server-side AngularJS templating may useful in some situations, such as
 
-* You want a easy way to serve your JavaScript MVC website content [for 
+* You want an easy way to serve your JavaScript MVC website content [for 
   web indexing crawlers](http://www.ng-newsletter.com/posts/serious-angular-seo.html). 
 * You want to render a very large array of JSON objects in an AngularJS ng-repeat loop.
   This has terrible performance in the web browser and in some cases can't even happen. You
