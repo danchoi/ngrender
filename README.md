@@ -1,6 +1,6 @@
 # ngrender
 
-Pure server-side rendering of AngularJS templates.
+Pure server-side rendering of AngularJS templates from the command line.
 
 This project is beta and not guaranteed to work with your AngularJS templates. YMMV.
 
