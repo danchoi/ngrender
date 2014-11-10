@@ -6,7 +6,7 @@ This project is beta and not guaranteed to work with your AngularJS templates. Y
 
 ## Some use cases
 
-Server-side AngularJS templating may useful in some situations, such as
+Server-side AngularJS templating is useful in some situations, such as
 
 * You want an easier way to serve your JavaScript MVC website content [for 
   web indexing
