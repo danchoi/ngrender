@@ -11,9 +11,9 @@ Server-side AngularJS templating may useful in some situations, such as
 * You want an easier way to serve your JavaScript MVC website content [for 
   web indexing
   crawlers](http://www.ng-newsletter.com/posts/serious-angular-seo.html) and
-  you more certainty than a
-  [guess](http://googlewebmastercentral.blogspot.de/2014/05/understanding-web-pages-better.html)
-  that your content is being indexed. 
+  you want more
+  [certainty](http://googlewebmastercentral.blogspot.de/2014/05/understanding-web-pages-better.html)
+  that your content is indexed. 
 * You want to render a very large array of JSON objects in an AngularJS ng-repeat loop.
   This has terrible performance in the web browser and in some cases can't even happen. You
   want a way to render the AngularJS templates with more horsepower than the browser's pokey JavaScript engine. 
