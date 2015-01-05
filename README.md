@@ -196,6 +196,7 @@ will be nested in it.
 * ng-class
 * {{ }} expressions
 * Angular expressions in ng-attributes
+* `items.join(',')` syntax
 
 ## Not yet supported
 

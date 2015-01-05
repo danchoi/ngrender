@@ -43,7 +43,9 @@ data NgFilter = NgFilter FilterName (Maybe NgExpr) deriving (Show, Eq)
 type FilterName = String
 type FilterArg = String
 
-data JSKey = ObjectKey Text | ArrayIndex Int  | Method Text
+data JSKey = ObjectKey Text 
+           | ArrayIndex Int  
+           | Method Text [Text]  -- method name and arguments
     deriving (Show, Eq)
 
 data TextChunk = PassThrough String | Interpolation String 
@@ -54,6 +56,8 @@ data ComparableValue = ComparableNumberValue Scientific
                      | ComparableBoolValue Bool
                      | ComparableNullValue 
     deriving (Ord, Eq, Show)
+
+type NgExprParser = ParsecT String () Identity 
 
 symbol s = spaces *> string s <* spaces
 
@@ -87,10 +91,16 @@ comparisonOp = choice $ map (try . symbol) [">=", "<=", "!=", ">", "<", "=="]
 
 ngExprTerm = (char '(' *> ngExpr <* char ')') <|>  ngLiteral <|> ngKeyPath
 
+ngKeyPath :: NgExprParser NgExpr
 ngKeyPath = do
-    ks <- sepBy1 ((ArrayIndex . read <$> many1 digit <* char ']') <|> (toJSKey . T.pack <$> ngVarName))
-                 (char '.' <|> char '[') 
+    ks <- sepBy1 ngKeyPathComponent (char '.' <|> char '[') 
     return $ NgKeyPath ks 
+
+ngKeyPathComponent :: NgExprParser JSKey
+ngKeyPathComponent = 
+    (ArrayIndex . read <$> many1 digit <* char ']') <|> 
+    (try ngKeyPathMethodWithArgs) <|> 
+    (toJSKey . T.pack <$> ngVarName)
 
 ngVarName = many1 (alphaNum <|> char '$' <|> char '_')
 
@@ -182,9 +192,13 @@ ngEvaluate [] x@(Number _) = x
 ngEvaluate [] x@(Bool _) = x
 ngEvaluate [] x@(Object _) = x
 ngEvaluate [] x@(Array _) = x
-ngEvaluate ((ObjectKey key):(Method "length"):[]) (Object s) = 
+ngEvaluate ((ObjectKey key):(Method "length" []):[]) (Object s) = 
     case (HM.lookup key s) of
         (Just (Array vs)) -> toJSON $ V.length vs
+        _ -> Null
+ngEvaluate ((ObjectKey key):(Method "join" [separator]):[]) (Object s) = 
+    case (HM.lookup key s) of
+        (Just (Array vs)) -> String $ mconcat $ intersperse separator $ map (T.pack . valToString) $ V.toList vs
         _ -> Null
 ngEvaluate ((ObjectKey key):xs) (Object s) = ngEvaluate xs (HM.lookupDefault Null key s)
 ngEvaluate ((ArrayIndex idx):xs) (Array v) = case V.length v > 0 of
@@ -193,11 +207,29 @@ ngEvaluate ((ArrayIndex idx):xs) (Array v) = case V.length v > 0 of
 ngEvaluate _ _ = Null
 
 
--- TODO translate [1] expression
+
 -- CHANGE TO PARSEC
 toJSKey :: Text -> JSKey
-toJSKey "length" = Method "length"
+toJSKey "length" = Method "length" []
 toJSKey x = ObjectKey x
+
+ngKeyPathMethodWithArgs :: NgExprParser JSKey
+ngKeyPathMethodWithArgs = do
+    methodName <- T.pack <$> ngVarName
+    char '('
+    -- simplistic argument parser. 
+    -- Messes up in an argument is a string with a comma in it.
+    args <- pStringMethodArgument `sepBy1` (spaces >> char ',' >> spaces)
+    char ')'
+    return $ Method methodName args 
+
+pStringMethodArgument :: NgExprParser Text
+pStringMethodArgument = do
+    spaces  
+    arg <- between (char '\'') (char '\'') (many1 (noneOf "'")) 
+           <|> between (char '"') (char '"') (many1 (noneOf "\""))
+    return . T.pack $ arg
+
 
 valToString :: Value -> String
 valToString (String x) = T.unpack x
@@ -225,7 +257,7 @@ parseKeyExpr s =
       let (NgKeyPath ks) = runParse ngKeyPath s
       in ks
 
-ngTextChunk :: ParsecT String () Identity TextChunk
+ngTextChunk :: NgExprParser TextChunk
 ngTextChunk = interpolationChunk <|> passThroughChunk
 
 interpolationChunk = do
@@ -257,7 +289,7 @@ jsonToValue = fromJust . decode
 ------------------------------------------------------------------------
 -- Tests
 
-runTests = runTestTT tests
+t = runTestTT tests
 
 testContext1      = jsonToValue  [s|{"item":"apple","another":10}|]
 testContext2      = jsonToValue  [s|{"item":{"name":"apple"}}|]
@@ -269,14 +301,26 @@ tests = test [
     "parseKeyExpr"          ~: [ObjectKey "item"]   @=?   parseKeyExpr "item"
   , "ngEvalToString"        ~: "apple"              @=?   ngEvalToString testContext1 "item" 
   , "ngEvalToString2"       ~: "apple"              @=?   ngEvalToString testContext2 "item.name" 
-  , "array keypath"         ~: [ObjectKey "items",ArrayIndex 1]       @=?   parseKeyExpr "items[1]" 
+  , "parse array keypath"   ~: [ObjectKey "items",ArrayIndex 1]       @=?   parseKeyExpr "items[1]" 
+  , "eval array index"      ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
   , "array index"           ~: "2"                  @=?   ngEvalToString testContext3 "items[1]" 
   , "parse ng map"          ~: NgMap (M.fromList [("testKey",NgKeyPath [ObjectKey "item",ObjectKey "name"])])
                                @=? runParse ngExpr "{testKey: item.name}"
   , "parse ng map 2"        ~: NgMap (M.fromList [("dwarf",Compare "==" (NgKeyPath [ObjectKey "person",ObjectKey "species"]) (NgLiteral (String "dwarf"))),("hobbit",Compare "==" (NgKeyPath [ObjectKey "person",ObjectKey "species"]) (NgLiteral (String "hobbit")))])
                                @=? runParse ngExpr "{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit'}"
 
-  , "length method"         ~: "3"                  @=?   ngEvalToString testContext3 "items.length" 
+  , "parse length method"   ~: [ObjectKey "items",Method "length" []] @=?   parseKeyExpr "items.length" 
+  , "parse join method with arg"   
+                            ~: [ObjectKey "items",Method "join" [","]] 
+                            @=?   parseKeyExpr "items.join(\",\")" 
+  , "parse join method with arg, single quotes"   
+                            ~: [ObjectKey "items",Method "join" [","]] 
+                            @=?   parseKeyExpr "items.join(',')" 
+  , "eval length method"    ~: "3"                  
+                            @=?   ngEvalToString testContext3 "items.length" 
+  , "eval  join method with arg"   
+                            ~: "1,2,3"
+                            @=? ngEvalToString testContext3 "items.join(\",\")" 
   , "parse ngexpr 1"        ~: NgKeyPath [ObjectKey "test"]  
                                @=? runParse ngExpr "test"
   , "parse ngexpr 2"        ~: (Or (NgKeyPath [ObjectKey "test"]) (NgKeyPath [ObjectKey "test2"]))
@@ -300,6 +344,7 @@ tests = test [
   , "disjunction right"     ~: "10"                  @=? ngEvalToString testContext1 "blah || another" 
   , "disjunction in parens" ~: "apple"               @=? ngEvalToString testContext2 "(item.color || item.name)" 
   , "length"                ~: Number 3              @=? ngEval ["items","length"] testContext3 
+
   , "ngmap eval 1"          ~: "canceled"            @=? ngEvalToString testContext4 "{active: item.active, canceled:item.canceled}"
   , "ngmap eval 2"          ~: "hobbit"              @=? ngEvalToString testContext5 "{dwarf: person.species == 'dwarf', hobbit: person.species == 'hobbit'}"
 
