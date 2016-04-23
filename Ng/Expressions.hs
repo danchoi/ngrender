@@ -174,6 +174,7 @@ ngExprEval (Compare op x y) v      =
             "<=" -> Bool $ vx <= vy
             "==" -> Bool $ vx == vy
             "!=" -> Bool $ vx /= vy
+            x -> error $ "Unsupported comparison: " ++ x
 
 
 comparableValue :: Value -> ComparableValue
