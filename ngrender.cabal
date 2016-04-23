@@ -17,9 +17,9 @@ cabal-version:       >=1.10
 
 executable ngrender
   main-is:             Main.hs
-  -- other-modules:       
+  other-modules:       Ng.Expressions, Ng.Templating
   -- other-extensions:    
-  build-depends:       base >=4.7 && <4.8,
+  build-depends:       base >=4.7 && <4.9,
                        hxt,
                        bytestring,
                        text, 

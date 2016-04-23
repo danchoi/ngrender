@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, ExistentialQuantification, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ExistentialQuantification, ScopedTypeVariables, FlexibleContexts #-}
 module Ng.Expressions where
 import Text.Parsec hiding (many, (<|>))
 import Data.Maybe (fromJust, fromMaybe)
